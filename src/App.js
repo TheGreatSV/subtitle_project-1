@@ -224,8 +224,9 @@ function App() {
 
   const handletimingselection=()=>{
    setIsPlaying(false)
-   row.startTime=currentPosition
-   row.endTime=endTime
+   setRow({startTime:currentPosition, endTime:endTime})
+  //  row.startTime=currentPosition
+  //  row.endTime=endTime
 
   // playerRef.current.getCurrentTime()	
   }
