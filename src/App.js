@@ -10,6 +10,8 @@ import ExportSrt from './ExportSrt';
 import VideoProcessor from './VideoProcessor';
 import {useEffect, useRef} from 'react'
 import AutoSubtitle from './AutoSubtitle';
+import { useNavigate } from 'react-router-dom';
+
 
 
 
@@ -30,6 +32,7 @@ function App() {
   const playerRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [endTime, setEndTime] = useState('');
+  const navigate = useNavigate();
  
 
   const [videoConfig, setVideoConfig] = useState({
@@ -45,8 +48,11 @@ function App() {
     }
   });
   useEffect(() => {
+    
     const storedProjectName = sessionStorage.getItem('project');
-
+    if(storedProjectName == null){
+      navigate('/')
+    }
      setProjectName(storedProjectName);
      const savedEntries = localStorage.getItem(`${storedProjectName}Entries`);
      const savedDivs = localStorage.getItem(`${storedProjectName}Divs`);
