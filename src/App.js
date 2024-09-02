@@ -20,7 +20,7 @@ function App() {
   const [Divs, SetDivs] = useState([]);
   const [selectedIndex, setSelectedIndex] = useState(null);
   const [show, setShow] = useState(false);
-  const [url, ChangeURL] = useState('jjjjj');
+  const [url, ChangeURL] = useState('txt');
   const [currentPosition, setCurrentTime] = useState(0);
   const [delIndex, setDelIndex] = useState('');
   const [delshow, setDelShow] = useState(false);
@@ -266,7 +266,7 @@ function App() {
       </header>
 
       <div className="main-content">
-      <div class="scroll-container">
+      <div className="scroll-container">
       <div className="row">
      
       <div className="video-section">
@@ -313,7 +313,7 @@ function App() {
         </div>
        
         </div>
-        <div class="scroll-container">
+        <div className="scroll-container">
         <div className="row-md-6">
         
         <div className="entries-section">
