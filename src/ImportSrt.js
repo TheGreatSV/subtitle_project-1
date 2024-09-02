@@ -69,7 +69,7 @@ function ImportSrt({setEntries, SetDivs, setIndex}) {
     //     style={{ marginBottom: '20px' }} 
     //   />
 <div>
-  <button onClick={ShowDialog}>Import SRT </button>
+  <button className='btn btn-primary' onClick={ShowDialog}>Import SRT </button>
     <Modal show={show} onHide={handleCloseExportModal}>
       <Modal.Header closeButton>
         <Modal.Title>Import SRT File</Modal.Title>

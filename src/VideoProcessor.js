@@ -108,6 +108,8 @@ const VideoProcessor = ({ Entries, VideoFile }) => {
             '-c:a', 'aac',    // Ensures audio encoding
             '-threads', '4', 
             'output.mp4'
+            
+             
         ]);
            
 
@@ -167,7 +169,7 @@ const VideoProcessor = ({ Entries, VideoFile }) => {
     return (
 
 <div>
-<button onClick={ShowDialog}>Burn Subtitle to video</button>
+<button className='btn btn-primary' onClick={ShowDialog}>Burn Subtitle to video</button>
 
             <Modal show={show} onHide={handleCloseExportModal}>
               <Modal.Header closeButton>

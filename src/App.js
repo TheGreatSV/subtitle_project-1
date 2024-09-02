@@ -282,9 +282,10 @@ function App() {
             playing={isPlaying}
             onPlay={handlePlay} 
           />
-          
-          <label>currentPosition: </label> <label>{currentPosition}</label>
-          <button onClick={handletimingselection}>select current video position</button>
+          <div style={{marginTop:8}}>
+          <label>currentPosition: </label> <label style={{marginRight:10}}>{currentPosition}</label>
+          <button className='btn btn-secondary' onClick={handletimingselection}>select current video position</button>
+          </div>
           <div className="controls">
             <Form.Group controlId="index">
               {/* <Form.Label>Index:</Form.Label> */}

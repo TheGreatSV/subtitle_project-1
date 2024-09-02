@@ -39,7 +39,7 @@ function ExportSrt({Entries}) {
     
   return (
     <div>
-    <button onClick={ShowDialog}>Export SRT</button>
+    <button className='btn btn-primary' onClick={ShowDialog}>Export SRT</button>
     <ExportDialog show={show} saveSrtFile={ saveSrtFile} convertToSrt={convertToSrt} Entries={Entries} setShow={setShow} />
     </div>
   )
