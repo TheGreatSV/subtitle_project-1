@@ -1,0 +1,110 @@
+/* App.css */
+.app {
+  font-family: Arial, sans-serif;
+  color: #333;
+  padding: 20px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #ddd;
+}
+
+.header > * {
+  margin: 0 10px;
+}
+
+.main-content {
+  display: flex;
+  width: 100%;
+}
+
+.video-section, .entries-section {
+  width: 50%;
+  height: 100%;
+  overflow-y: auto;
+}
+.scroll-container {
+  overflow-y: auto;
+  height: 100vh; /* adjust the height to your liking */
+  width: 50%;
+}
+
+
+/* Optional styling to visualize the sections */
+.video-section {
+  flex: 2;
+  border-right: 1px solid #ddd; /* Separator line */
+  padding: 10px;
+}
+
+.entries-section {
+  flex: 3;
+  padding: 10px;
+  width: 100%;
+}
+
+.react-player {
+  border-radius: 8px;
+}
+
+.controls {
+  margin-top: 20px;
+}
+
+.controls .form-group {
+  margin-bottom: 10px;
+}
+
+.controls button {
+  margin-top: 10px;
+}
+
+
+
+.entry-card {
+  background-color: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  width: 100%;
+}
+
+.entry-card button {
+  margin-right: 5px;
+}
+
+.entry-card strong {
+  display: block;
+  margin-bottom: 5px;
+}
+
+input[type="file"] {
+  margin-top: 10px;
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    flex-direction: column;
+    
+  }
+
+  .video-section {
+    margin-bottom: 20px;
+  }
+
+  .entries-section {
+    flex: none;
+    
+  }
+
+
+
+
+
+}

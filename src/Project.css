@@ -1,0 +1,42 @@
+/* Container for project cards */
+
+.projects-page {
+    padding: 20px;
+  }
+.projects-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px; /* Space between cards */
+    justify-content: left; /* Center the cards */
+    margin-top: 20px;
+  }
+  
+  /* Individual card styling */
+  .project-card {
+    position: relative;
+    width: 300px; /* Adjust width as needed */
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    overflow: hidden;
+    text-align: center;
+    margin-left: 20px;
+  }
+  
+  /* Styling for the placeholder image */
+  .project-placeholder {
+    width: 100%;
+    height: 100px; /* Adjust height as needed */
+    background-color: #f0f0f0; /* Placeholder background color */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px; /* Size of the letter */
+    color: #333;
+    font-weight: bold;
+  }
+  
+  /* Content inside the card */
+  .card-content {
+    padding: 16px;
+  }
+  
