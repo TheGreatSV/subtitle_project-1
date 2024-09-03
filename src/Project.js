@@ -81,7 +81,7 @@ const ProjectsPage = () => {
 
   return (
     <div className="projects-page">
-      <Button variant="primary" onClick={() => setShowProjectModal(true)}>Add Project</Button>
+      <Button variant="primary" onClick={() => setShowProjectModal(true)}>Create new Project</Button>
       
       <div className="projects-container">
         {projects.map((project, index) => (
