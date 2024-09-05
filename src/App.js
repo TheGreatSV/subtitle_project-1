@@ -9,7 +9,6 @@ import ImportSrt from './ImportSrt';
 import ExportSrt from './ExportSrt';
 import VideoProcessor from './VideoProcessor';
 import {useEffect, useRef} from 'react'
-import AutoSubtitle from './AutoSubtitle';
 import { useNavigate } from 'react-router-dom';
 import Errorchecking from './Errorchecking';
 

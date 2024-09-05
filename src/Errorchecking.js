@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Modal, Button, Form } from 'react-bootstrap';
+import { Modal, Button } from 'react-bootstrap';
 
 
 function Errorchecking({Entries}) {
@@ -86,7 +86,7 @@ function Errorchecking({Entries}) {
                 <ul>
                   {error.subtitles.map((subtitle, idx) => (
                     <li key={idx}>
-                      {subtitle.startTime} --> {subtitle.endTime}: {subtitle.text}
+                      {subtitle.startTime} {'-->'} {subtitle.endTime}: {subtitle.Text}
                     </li>
                   ))}
                 </ul>
