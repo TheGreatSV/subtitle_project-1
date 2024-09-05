@@ -36,6 +36,14 @@ function Errorchecking({Entries}) {
               subtitles: [currentSubtitle, nextSubtitle],
             });
           }
+
+          if(currentStart > currentEnd){
+            errors.push({
+              type: 'Incorrect Sequence',
+              message: `Start time of subtitle ${i + 1} is greater than End time`,
+              subtitles: [currentSubtitle, nextSubtitle],
+            });
+          }
       
           // Check for incorrect sequence (e.g., later subtitle appears before an earlier one)
           if (currentStart > nextStart) {

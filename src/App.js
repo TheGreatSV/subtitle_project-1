@@ -146,6 +146,9 @@ function App() {
   };
 
   const AddEntries = () => {
+
+    if(row.startTime.length ==12 && row.endTime.length==12)
+    {
     if (Entries.length === subIndex - 1) {
       SetDivs([...Divs, Entries.length + 1]);
       setEntries([...Entries, row]);
@@ -161,6 +164,9 @@ function App() {
       SetDivs(updatedDivs);
       setIndex(+subIndex + 1);
     }
+  }else{
+    alert("Start time or End time format is invalid!!!")
+  }
   };
 
   const handleChange = (e) => {
