@@ -14,7 +14,32 @@ function EditEntry({ Entries, show, handleClose, selectedIndex, handleSave }) {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    if(name!='Text')
+    {
+    const formattedVal = format(value);
+    setSelectedEntry({ ...selectedEntry, [name]: formattedVal });
+    }
+    else{
     setSelectedEntry({ ...selectedEntry, [name]: value });
+    }
+  };
+
+  const format = (val) => {
+    let numericValue = val.replace(/\D/g, '');
+    let formatted = '';
+    if (numericValue.length > 0) {
+      formatted = numericValue.slice(0, 2);
+      if (numericValue.length > 2) {
+        formatted += ':' + numericValue.slice(2, 4);
+      }
+      if (numericValue.length > 4) {
+        formatted += ':' + numericValue.slice(4, 6);
+      }
+      if (numericValue.length > 6) {
+        formatted += ',' + numericValue.slice(6, 9);
+      }
+    }
+    return formatted;
   };
 
   const handleSaveClick = () => {
