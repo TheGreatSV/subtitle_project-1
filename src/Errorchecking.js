@@ -2,10 +2,12 @@ import React, { useState } from 'react'
 import { Modal, Button } from 'react-bootstrap';
 
 
-function Errorchecking({Entries}) {
+function Errorchecking({Entries, setHighlight}) {
     const [buttonText, setButtonText] = useState('Check errors');
     const[errors,setErrors]=useState([])
     const[show,setShow]=useState(false)
+    const highlightIndices=[]
+
    
 
     const checkSubtitleErrors = (e) => {
@@ -35,14 +37,17 @@ function Errorchecking({Entries}) {
               message: `Overlap between subtitle ${i + 1} and subtitle ${i + 2}`,
               subtitles: [currentSubtitle, nextSubtitle],
             });
+
+            highlightIndices.push(i,i+1)
           }
 
           if(currentStart > currentEnd){
             errors.push({
               type: 'Incorrect Sequence',
               message: `Start time of subtitle ${i + 1} is greater than End time`,
-              subtitles: [currentSubtitle, nextSubtitle],
+              subtitles: [currentSubtitle],
             });
+            highlightIndices.push(i)
           }
       
           // Check for incorrect sequence (e.g., later subtitle appears before an earlier one)
@@ -52,11 +57,12 @@ function Errorchecking({Entries}) {
               message: `Subtitle ${i + 2} starts before subtitle ${i + 1} ends`,
               subtitles: [currentSubtitle, nextSubtitle],
             });
+            highlightIndices.push(i,i+1)
           }
         }
       
         setButtonText("Check error")
-        
+        setHighlight(highlightIndices)
         setShow(true)
       console.log(errors)
       };

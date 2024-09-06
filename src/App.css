@@ -75,6 +75,34 @@
   width: 100%;
 }
 
+.entry-card-highlight {
+  background-color: #ffffff;
+  border: 1px solid #f10202;
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  width: 100%;
+}
+
+.tooltip-text {
+  display: none;
+  position: absolute;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: black;
+  color: white;
+  padding: 5px;
+  border-radius: 5px;
+  white-space: nowrap;
+}
+
+.entry-card-highlight.show-tooltip .tooltip-text {
+  display: block;
+}
+
+
 .dark-mode .entry-card{
   background-color: #000000;
   border: 1px solid #000000;

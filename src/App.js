@@ -34,6 +34,8 @@ function App() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [endTime, setEndTime] = useState('');
   const navigate = useNavigate();
+  const [highlightIndices,setHighlight]=useState([])
+
  
 
   const [videoConfig, setVideoConfig] = useState({
@@ -226,12 +228,15 @@ function App() {
   const showDelete = (index) => {
     setDelIndex(index);
     setDelShow(true);
+    
   };
 
   const handleDelete = () => {
     setEntries(Entries.filter((_, index) => index !== delIndex));
     SetDivs(Divs.filter((_, index) => index !== delIndex));
     setIndex(Entries.length);
+    const updatedHighlight=highlightIndices.filter(item => item !==delIndex)
+    setHighlight(updatedHighlight)
     handleCloseDelete();
   };
 
@@ -270,7 +275,7 @@ function App() {
       <header className="header">
         <ExportSrt Entries={Entries} />
         <ImportSrt setEntries={setEntries} SetDivs={SetDivs} setIndex={setIndex} />
-        <Errorchecking Entries={Entries}/>
+        <Errorchecking Entries={Entries} setHighlight={setHighlight}/>
         <VideoProcessor Entries={Entries} VideoFile={VideoFile} />
         <SeverProcessing Entries={Entries} VideoFile={VideoFile}/>
         {/* <AutoSubtitle url={url}/> */}
@@ -335,7 +340,9 @@ function App() {
          
         
           {Divs.map((div, index) => (
-            <div key={div} className="entry-card">
+            <div key={div} className={`entry-card ${
+              highlightIndices.includes(index) ? 'entry-card-highlight' : ''
+            }`}>
               <div>{+index+1}</div>
               <div><strong>Start:</strong> {Entries[index].startTime}</div>
               <div><strong>End:</strong> {Entries[index].endTime}</div>
