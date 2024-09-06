@@ -4,6 +4,8 @@
 /node_modules
 /.pnp
 .pnp.js
+/native-ffmpeg-server/node_modules
+/native-ffmpeg-server/uploads
 
 # testing
 /coverage

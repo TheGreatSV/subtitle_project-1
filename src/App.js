@@ -11,6 +11,7 @@ import VideoProcessor from './VideoProcessor';
 import {useEffect, useRef} from 'react'
 import { useNavigate } from 'react-router-dom';
 import Errorchecking from './Errorchecking';
+import SeverProcessing from './SeverProcessing';
 
 
 
@@ -271,6 +272,7 @@ function App() {
         <ImportSrt setEntries={setEntries} SetDivs={SetDivs} setIndex={setIndex} />
         <Errorchecking Entries={Entries}/>
         <VideoProcessor Entries={Entries} VideoFile={VideoFile} />
+        <SeverProcessing Entries={Entries} VideoFile={VideoFile}/>
         {/* <AutoSubtitle url={url}/> */}
         <div>
         <label>Open Video:  </label>
