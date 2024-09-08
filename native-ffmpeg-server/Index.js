@@ -40,6 +40,11 @@ app.post('/process-video', upload.fields([{ name: 'videoFile' }, { name: 'subtit
       res.status(500).send('FFmpeg processing failed.');
     }
   });
+
+  ffmpeg.on('error', (err) => {
+    res.status(500).send(`FFmpeg error: ${err.message}`);
+  });
+  
 });
 
 const PORT = process.env.PORT || 5000;
