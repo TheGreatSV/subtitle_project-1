@@ -3,9 +3,13 @@ const multer = require('multer');
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const cors = require('cors');
+
+
 
 const app = express();
 const upload = multer({ dest: 'uploads/' }); // Handle file uploads
+app.use(cors());
 
 app.post('/process-video', upload.fields([{ name: 'videoFile' }, { name: 'subtitleFile' }]), (req, res) => {
   const videoFilePath = path.join(__dirname, req.files.videoFile[0].path);
