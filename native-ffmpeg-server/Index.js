@@ -25,7 +25,15 @@ app.post('/process-video', upload.fields([{ name: 'videoFile' }, { name: 'subtit
     '-c:a', 'aac',                      // Audio codec
     '-threads', '4',                    // Multithreading
     outputFilePath                      // Output file
-  ]);
+  ], { stdio: ['ignore', 'pipe', 'pipe'] });
+
+  ffmpeg.stdout.on('data', (data) => {
+    console.log(`stdout: ${data}`);
+  });
+  
+  ffmpeg.stderr.on('data', (data) => {
+    console.error(`stderr: ${data}`);
+  });
 
   ffmpeg.on('close', (code) => {
     if (code === 0) {
