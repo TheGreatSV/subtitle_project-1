@@ -21,9 +21,10 @@ app.post('/process-video', upload.fields([{ name: 'videoFile' }, { name: 'subtit
     '-i', videoFilePath,                // Input video
     '-vf', `subtitles=${subtitleFilePath}:force_style='Fontname=Arial'`, // Add subtitles
     '-c:v', 'libx264',                  // Video codec
-    '-preset', 'ultrafast',              // Encoding speed preset
-    '-c:a', 'aac',                      // Audio codec
-    '-threads', '4',                    // Multithreading
+    '-crf', '18',   
+    '-preset', 'fast',           // Encoding speed preset
+    '-c:a', 'copy',                      // Audio codec
+    // '-threads', '4',                    // Multithreading
     outputFilePath                      // Output file
   ], { stdio: ['ignore', 'pipe', 'pipe'] });
 
