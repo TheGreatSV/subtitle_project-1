@@ -24,7 +24,7 @@ app.post('/process-video', upload.fields([{ name: 'videoFile' }, { name: 'subtit
     '-crf', '18',   
     '-preset', 'fast',           // Encoding speed preset
     '-c:a', 'copy',                      // Audio codec
-    // '-threads', '4',                    // Multithreading
+     '-threads', '4',                    // Multithreading
     outputFilePath                      // Output file
   ], { stdio: ['ignore', 'pipe', 'pipe'] });
 
