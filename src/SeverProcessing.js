@@ -64,7 +64,7 @@ function SeverProcessing({Entries, VideoFile}) {
         formData.append('videoFile', videoFile);
         formData.append('subtitleFile', subtitleFile);
       
-        const response = await fetch('http://51.195.118.81:5000/process-video', {
+        const response = await fetch('/process-video', {
           method: 'POST',
           body: formData,
         });
