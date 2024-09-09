@@ -101,7 +101,8 @@ function SeverProcessing({Entries, VideoFile}) {
           };
           
           // Open and send the request
-          xhr.open('POST', 'http://51.195.118.81:5000/process-video', true);
+          
+          xhr.open('POST', '/process-video', true);
           xhr.responseType = 'blob'; // Ensure the response is treated as a Blob
           xhr.send(formData);
       });
