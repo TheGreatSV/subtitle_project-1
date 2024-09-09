@@ -12,6 +12,7 @@ import {useEffect, useRef} from 'react'
 import { useNavigate } from 'react-router-dom';
 import Errorchecking from './Errorchecking';
 import SeverProcessing from './SeverProcessing';
+import ShiftTiming from './ShiftTiming';
 
 
 
@@ -278,6 +279,7 @@ function App() {
         <Errorchecking Entries={Entries} setHighlight={setHighlight}/>
         <VideoProcessor Entries={Entries} VideoFile={VideoFile} />
         <SeverProcessing Entries={Entries} VideoFile={VideoFile}/>
+        <ShiftTiming Entries={Entries} setEntries={setEntries} formatDuration={formatDuration}></ShiftTiming>
         {/* <AutoSubtitle url={url}/> */}
         <div>
         <label>Open Video:  </label>
