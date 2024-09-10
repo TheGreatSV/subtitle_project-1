@@ -51,6 +51,9 @@ app.post('/process-video', upload.fields([{ name: 'videoFile' }, { name: 'subtit
       });
     } else {
       res.status(500).send('FFmpeg processing failed.');
+      fs.unlink(videoFilePath, () => {});
+      fs.unlink(subtitleFilePath, () => {});
+      fs.unlink(outputFilePath, () => {});
     }
   });
 
