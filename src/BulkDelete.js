@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Modal, Button, Form, Row, Col } from 'react-bootstrap';
 
-function BulkDelete({Entries, setEntries}) {
+function BulkDelete({Entries, setEntries, Divs, setDivs}) {
     const [startIndex, setStartIndex] = useState('');
     const [endIndex, setEndIndex] = useState('');
     
@@ -20,17 +20,25 @@ function BulkDelete({Entries, setEntries}) {
         
         const start = parseInt(startIndex)
         const end =parseInt(endIndex)
-        if (start >= 0 && +end < Entries.length && +start <= end) {
-            const updatedEntries = Entries.filter((_, index) => index < startIndex || index > endIndex);
+        let temp = [...Entries];
+        let tempdiv=[...Divs];
+        console.log(start)
+        console.log(end)
+        if ((start >= 0) && (end <= temp.length) && (start <= end)) {
+            const updatedEntries = temp.filter((_, index) => index < startIndex || index > endIndex);
+            const updatedDivs= tempdiv.filter((_, index) => index < startIndex || index > endIndex);
             setEntries(updatedEntries)
+            setDivs(updatedDivs)
         } else {
           console.error("Invalid start or end index");
         }
+
+        handleClose();
        
       };
   return (
     <div>
-    <button onClick={showDialog}> Bulk Delete </button>
+    <button onClick={showDialog} className='btn btn-danger'> Bulk Delete </button>
 
 
     <Modal show={show} onHide={handleClose}>
@@ -76,7 +84,7 @@ function BulkDelete({Entries, setEntries}) {
             Close
         </Button>
         <Button variant="primary" onClick={deleteEntriesBulk}>
-            Shift
+            Delete
         </Button>
     </Modal.Footer>
 </Modal>

@@ -286,7 +286,7 @@ function App() {
         <VideoProcessor Entries={Entries} VideoFile={VideoFile} />
         <SeverProcessing Entries={Entries} VideoFile={VideoFile}/>
         <ShiftTiming Entries={Entries} setEntries={setEntries} formatDuration={formatDuration}></ShiftTiming>
-        <BulkDelete Entries={Entries} setEntries={setEntries}/>
+        <BulkDelete Entries={Entries} setEntries={setEntries} Divs={Divs} setDivs={SetDivs}/>
         {/* <AutoSubtitle url={url}/> */}
         <div>
         {/* <label>Open Video:  </label> */}
