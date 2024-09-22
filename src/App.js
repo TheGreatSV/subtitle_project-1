@@ -13,6 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import Errorchecking from './Errorchecking';
 import SeverProcessing from './SeverProcessing';
 import ShiftTiming from './ShiftTiming';
+import BulkDelete from './BulkDelete';
 
 
 
@@ -36,6 +37,7 @@ function App() {
   const [endTime, setEndTime] = useState('');
   const navigate = useNavigate();
   const [highlightIndices,setHighlight]=useState([])
+  const fileInputRef = useRef(null);
 
  
 
@@ -253,6 +255,10 @@ function App() {
   const handlePlay=()=>{
     setIsPlaying(true)
   }
+
+  const selectVideo=()=>{
+    fileInputRef.current.click();
+  }
   
 
   // useEffect(() => {
@@ -280,10 +286,12 @@ function App() {
         <VideoProcessor Entries={Entries} VideoFile={VideoFile} />
         <SeverProcessing Entries={Entries} VideoFile={VideoFile}/>
         <ShiftTiming Entries={Entries} setEntries={setEntries} formatDuration={formatDuration}></ShiftTiming>
+        <BulkDelete Entries={Entries} setEntries={setEntries} Divs={Divs} setDivs={SetDivs}/>
         {/* <AutoSubtitle url={url}/> */}
         <div>
-        <label>Open Video:  </label>
-        <input type="file" accept="video/*" onChange={handleFileChange} />
+        {/* <label>Open Video:  </label> */}
+        <button onClick={selectVideo}>Open Video</button>
+        <input type="file" hidden ref={fileInputRef} accept="video/*" onChange={handleFileChange} />
         </div>
       </header>
 
