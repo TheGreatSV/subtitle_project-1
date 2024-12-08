@@ -1,0 +1,14 @@
+
+Hope you enjoy your new logo, here are the people that
+made your beautiful logo happen :)
+font name: sofiapro-light
+font link: https://www.fontspring.com/fonts/mostardesign/sofia-pro/sofia-pro-light
+font author: Mostardesign
+font author site: http://www.motyfo.com/
+
+
+icon designer: Serkan Doğan
+icon designer link: /serkan
+        
+{"bg":"#E1F4FC","icon-gradient-0":"#0D7CE9","icon-gradient-1":"#15CFF1","font":"#08374E","slogan":"#1c4b62"}
+      
