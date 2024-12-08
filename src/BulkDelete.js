@@ -18,8 +18,8 @@ function BulkDelete({Entries, setEntries, Divs, setDivs}) {
 
       const deleteEntriesBulk = () => {
         
-        const start = parseInt(startIndex)
-        const end =parseInt(endIndex)
+        const start = parseInt(startIndex-1)
+        const end =parseInt(endIndex-1)
         let temp = [...Entries];
         let tempdiv=[...Divs];
         console.log(start)
