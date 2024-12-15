@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button, Card, Modal, Form } from 'react-bootstrap';
 import './Project.css'
+import MobileWarning from './MobileWarning';
 import { useNavigate } from 'react-router-dom';
 
 
@@ -81,6 +82,7 @@ const ProjectsPage = () => {
 
   return (
     <div className="projects-page">
+       <MobileWarning></MobileWarning>
       <Button variant="primary" onClick={() => setShowProjectModal(true)}>Create new Project</Button>
       
       <div className="projects-container">

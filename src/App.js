@@ -14,6 +14,7 @@ import Errorchecking from './Errorchecking';
 import SeverProcessing from './SeverProcessing';
 import ShiftTiming from './ShiftTiming';
 import BulkDelete from './BulkDelete';
+import MobileWarning from './MobileWarning';
 
 
 
