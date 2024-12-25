@@ -59,6 +59,7 @@ const ProjectsPage = () => {
     localStorage.removeItem(`${deleteName}Entries`);
     localStorage.removeItem(`${deleteName}Divs`);
     setProjects(projects.filter((_, index) => index !== deleteIndex));
+    localStorage.setItem('Projects', JSON.stringify(projects));
     setShowDeleteModal(false);
   };
 

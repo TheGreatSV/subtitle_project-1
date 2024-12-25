@@ -31,7 +31,7 @@ function MobileWarning() {
       {showMessage && (
         <div style={styles.messageBox}>
           <p style={styles.messageText}>
-            Welcome to our website! Enjoy the best experience on mobile.
+            Welcome to our website! Enjoy the best experience on Desktop.
           </p>
           <button style={styles.closeButton} onClick={closeMessage}>
             Close
