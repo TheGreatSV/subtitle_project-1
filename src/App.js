@@ -91,12 +91,16 @@ function App() {
         const videoElement = playerRef.current.getInternalPlayer();
         if (videoElement) {
           // Clear existing subtitle tracks
-          Array.from(videoElement.textTracks).forEach(track => {
-            if (track.kind === 'subtitles') {
-              track.mode = 'disabled'; // Disable the track
-              // There is no removeChild method for textTracks, just disable them
-            }
-          });
+          // Array.from(videoElement.textTracks).forEach(track => {
+          //   if (track.kind === 'subtitles') {
+          //     track.mode = 'disabled';
+          //     track.remove(); // Disable the track
+          //     // There is no removeChild method for textTracks, just disable them
+          //   }
+          // });
+
+          const tracks = videoElement.querySelectorAll('track');
+          tracks.forEach(track => track.remove()); // Remove the <track> elements
 
           const track = document.createElement('track');
           track.kind = 'subtitles';
@@ -106,6 +110,15 @@ function App() {
           track.default = true;
 
           videoElement.appendChild(track);
+
+          requestAnimationFrame(() => {
+            const textTracks = videoElement.textTracks;
+            Array.from(textTracks).forEach(textTrack => {
+              if (textTrack.kind === 'subtitles' && textTrack.label === 'English') {
+                textTrack.mode = 'showing'; // Enable the new track
+              }
+            });
+          });
         }
       }
 
@@ -291,7 +304,7 @@ function App() {
         {/* <AutoSubtitle url={url}/> */}
         <div>
         {/* <label>Open Video:  </label> */}
-        <button onClick={selectVideo}>Open Video</button>
+        <button className='buttonvid' onClick={selectVideo}>Open a Video</button>
         <input type="file" hidden ref={fileInputRef} accept="video/*" onChange={handleFileChange} />
         </div>
       </header>
