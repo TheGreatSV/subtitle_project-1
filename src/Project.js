@@ -86,7 +86,14 @@ const ProjectsPage = () => {
     <div className="projects-page">
        <MobileWarning></MobileWarning>
       <Button variant="primary" onClick={() => setShowProjectModal(true)}>Create new Project</Button>
-      
+      <div style={{ textAlign: 'center' }}>
+      { projects.length === 0 ? (
+        <div style={{ fontSize: '1.5rem', color: 'gray' ,marginTop: '20%'}}>
+          No saved project found! <br />
+          Create a new project to get started.
+        </div>
+      ):''}
+      </div>
       <div className="projects-container">
         {projects.map((project, index) => (
           <Card key={index} className="project-card">
