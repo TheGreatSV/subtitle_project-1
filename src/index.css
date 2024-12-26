@@ -12,3 +12,9 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+@media (max-width: 768px) {
+  body {
+    zoom: 0.8; /* Optional: Scale down for smaller screens */
+  }
+}
