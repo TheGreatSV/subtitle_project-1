@@ -9,6 +9,7 @@
     gap: 16px; /* Space between cards */
     justify-content: left; /* Center the cards */
     margin-top: 20px;
+    width: 1024px;
   }
   
   /* Individual card styling */
