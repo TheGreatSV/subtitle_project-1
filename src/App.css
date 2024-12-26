@@ -147,7 +147,7 @@ input[type="file"] {
   margin-top: 10px;
 }
 
-/* @media (max-width: 768px) {
+@media (max-width: 768px) {
   .main-content {
     flex-direction: column;
     
@@ -164,100 +164,4 @@ input[type="file"] {
   
 
 
-} */
-
-
-/* Mobile Styles */
-
-@media (max-width: 768px) {
-
-  .app {
-
-    transform: scale(1); /* Reset scaling for mobile */
-
-    width: 100%; /* Full width on mobile */
-
-    padding: 10px; /* Adjust padding for mobile */
-
-  }
-
-
-  .main-content {
-
-    flex-direction: column; /* Stack sections vertically */
-
-  }
-
-
-  .video-section, .entries-section {
-
-    width: 100%; /* Full width for both sections */
-
-    height: auto; /* Allow height to adjust */
-
-  }
-
-
-  .video-section {
-
-    margin-bottom: 20px; /* Space between sections */
-
-    border-right: none; /* Remove the right border for mobile view */
-
-  }
-
-
-  .entries-section {
-
-    padding: 10px; /* Maintain padding */
-
-  }
-
-
-  .buttonvid {
-
-    width: 100%; /* Full width buttons on mobile */
-
-    padding: 15px; /* Increase padding for better touch targets */
-
-  }
-
-
-  .entry-card {
-
-    padding: 15px; /* Increase padding for better readability */
-
-  }
-
-
-  .header {
-
-    flex-direction: column; /* Stack header items vertically */
-
-    align-items: flex-start; /* Align items to the start */
-
-  }
-
-
-  .header > * {
-
-    margin: 5px 0; /* Adjust margin for stacked items */
-
-  }
-
-
-  .controls {
-
-    flex-direction: column; /* Stack controls vertically */
-
-  }
-
-
-  .controls button {
-
-    width: 100%; /* Full width buttons in controls */
-
-    margin-top: 5px; /* Space between buttons */
-
-  }
 }
