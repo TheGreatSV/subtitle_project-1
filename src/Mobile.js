@@ -297,7 +297,7 @@ function Mobile() {
           <ExportSrt Entries={Entries} />
           <ImportSrt setEntries={setEntries} SetDivs={SetDivs} setIndex={setIndex} />
           <Errorchecking Entries={Entries} setHighlight={setHighlight} />
-          <VideoProcessor Entries={Entries} VideoFile={VideoFile} />
+          {/* <VideoProcessor Entries={Entries} VideoFile={VideoFile} /> */}
           <ShiftTiming Entries={Entries} setEntries={setEntries} formatDuration={formatDuration} />
           <BulkDelete Entries={Entries} setEntries={setEntries} Divs={Divs} setDivs={SetDivs} />
           <div>
