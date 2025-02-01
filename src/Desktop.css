@@ -1,0 +1,159 @@
+/* App.css */
+.Desktop {
+    font-family: Arial, sans-serif;
+    color: #333;
+    padding: 20px;
+    transform: scale(0.9); /* Scale down by 90% */
+    transform-origin: 0 0; /* Set the origin point for scaling */
+    width: 111.11%; /* Adjust the width to maintain full width at 90% scale */
+    height: 100vh;
+  }
+  
+  .Desktopbuttonvid {
+    background: #000000;
+    color: #39ff14;
+    font-size: 1.1rem;
+    font-weight: bold;
+    padding: 10px 20px;
+    border: 2px solid #39ff14;
+    border-radius: 10px;
+    cursor: pointer;
+    /* text-transform: uppercase; */
+    transition: box-shadow 0.3s, color 0.3s;
+  }
+  
+  .Desktopbuttonvid:hover {
+    box-shadow: 0 0 15px #39ff14, 0 0 25px #39ff14;
+    color: #ffffff;
+  }
+  
+  .headerDesktop {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #ddd;
+  }
+  
+  .headerDesktop > * {
+    margin: 0 10px;
+  }
+  
+  .main-contentDesktop {
+    display: flex;
+    width: 100%;
+    height: 100%;
+  }
+  
+  .video-sectionDesktop, .entries-sectionDesktop {
+    width: 50%;
+    
+    overflow-y: auto;
+  }
+  .scroll-containerDesktop {
+    overflow-y: auto;
+    height: 100vh; /* adjust the height to your liking */
+    width: 50%;
+  }
+  
+  
+  /* Optional styling to visualize the sections */
+  .video-sectionDesktop {
+    flex: 2;
+    border-right: 1px solid #ddd; /* Separator line */
+    padding: 10px;
+    height: 100%;
+  }
+  
+  .entries-sectionDesktop {
+    flex: 3;
+    padding: 10px;
+    width: 100%;
+    height: 100%;
+  }
+  
+  .react-playerDesktop {
+    border-radius: 8px;
+  }
+  
+  .controlsDesktop {
+    margin-top: 20px;
+  }
+  
+  .controlsDesktop .form-groupDesktop {
+    margin-bottom: 10px;
+  }
+  
+  .controlsDesktop button {
+    margin-top: 10px;
+  }
+  
+  
+  
+  .entry-cardDesktop {
+    background-color: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    width: 100%;
+  }
+  
+  .entry-card-highlightDesktop {
+    background-color: #ffffff;
+    border: 1px solid #f10202;
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    width: 100%;
+  }
+  
+  .tooltip-textDesktop {
+    display: none;
+    position: absolute;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: black;
+    color: white;
+    padding: 5px;
+    border-radius: 5px;
+    white-space: nowrap;
+  }
+  
+  .entry-card-highlight.show-tooltip .tooltip-textDesktop {
+    display: block;
+  }
+  
+  
+  .dark-modeDesktop .entry-cardDesktop{
+    background-color: #000000;
+    border: 1px solid #000000;
+    color: #ffffff;
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    width: 100%;
+  }
+  .entry-cardDesktop button {
+    margin-right: 5px;
+  }
+  
+  .entry-cardDesktop strong {
+    display: block;
+    margin-bottom: 5px;
+  }
+  
+  input[type="file"] {
+    margin-top: 10px;
+  }
+  
+  
+    
+  
+  
+  
+  

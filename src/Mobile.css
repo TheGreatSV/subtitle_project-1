@@ -1,0 +1,248 @@
+/* App.css */
+:root {
+    --primary-color: #39ff14;
+    --secondary-color: #000000;
+    --text-color: #333;
+    --background-color: #ffffff;
+    --border-color: #ddd;
+    --shadow-color: rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Base Styles */
+  .Mobile {
+    font-family: Arial, sans-serif;
+    color: var(--text-color);
+    padding: 20px;
+    width: 100%;
+    min-height: 100vh;
+    box-sizing: border-box;
+  }
+  
+  .buttonvid {
+    background: var(--secondary-color);
+    color: var(--primary-color);
+    font-size: 1rem;
+    font-weight: bold;
+    padding: 8px 16px;
+    border: 2px solid var(--primary-color);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: box-shadow 0.3s, color 0.3s;
+  }
+  
+  .buttonvid:hover {
+    box-shadow: 0 0 15px var(--primary-color), 0 0 25px var(--primary-color);
+    color: #ffffff;
+  }
+  
+  .header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    align-items: center;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border-color);
+  }
+  
+  .main-content {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 100%;
+  }
+  
+  .video-section, .entries-section {
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .scroll-container {
+    overflow-y: auto;
+    max-height: 60vh;
+    width: 100%;
+  }
+  
+  /* Video Section */
+  .video-section {
+    padding: 10px;
+    border-bottom: 1px solid var(--border-color);
+  }
+  
+  .react-player {
+    border-radius: 8px;
+    width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 16 / 9;
+  }
+  
+  .controls {
+    margin-top: 20px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+  }
+  
+  .controls .form-group {
+    margin-bottom: 0;
+  }
+  
+  .controls button {
+    width: 100%;
+    margin-top: 0;
+  }
+  
+  /* Entries Section */
+  .entries-section {
+    padding: 10px;
+  }
+  
+  .entry-card {
+    background-color: var(--background-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 10px;
+    box-shadow: 0 4px 8px var(--shadow-color);
+    width: 100%;
+  }
+  
+  .entry-card-highlight {
+    border: 1px solid #f10202;
+  }
+  
+  .entry-card button {
+    margin-right: 5px;
+    padding: 5px 10px;
+    font-size: 0.9rem;
+  }
+  
+  .entry-card strong {
+    display: block;
+    margin-bottom: 5px;
+  }
+  
+  /* Dark Mode */
+  .dark-mode .entry-card {
+    background-color: var(--secondary-color);
+    border-color: var(--secondary-color);
+    color: #ffffff;
+  }
+  
+  /* Responsive Styles */
+  @media (min-width: 768px) {
+    .app {
+      padding: 20px 40px;
+    }
+  
+    .main-content {
+      flex-direction: row;
+    }
+  
+    .video-section {
+      width: 50%;
+      border-right: 1px solid var(--border-color);
+      border-bottom: none;
+    }
+  
+    .entries-section {
+      width: 50%;
+    }
+  
+    .scroll-container {
+      max-height: 75vh;
+    }
+  
+    .controls {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  
+  @media (min-width: 1024px) {
+    .header {
+      justify-content: space-between;
+    }
+  
+    .controls {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+  
+  /* Utility Classes */
+  .flex-center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  .gap-1 {
+    gap: 0.5rem;
+  }
+  
+  .gap-2 {
+    gap: 1rem;
+  }
+  
+  .p-1 {
+    padding: 0.5rem;
+  }
+  
+  .p-2 {
+    padding: 1rem;
+  }
+  
+  .mt-1 {
+    margin-top: 0.5rem;
+  }
+  
+  .mt-2 {
+    margin-top: 1rem;
+  }
+  
+  
+  /* Add to App.css */
+  .scroll-container-mobile {
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+  
+  @media (max-width: 768px) {
+    .scroll-container-mobile {
+      max-height: 50vh;
+    }
+    
+    .entry-card {
+      font-size: 0.9rem;
+      padding: 0.75rem;
+    }
+    
+    .react-player {
+      border-radius: 8px;
+    }
+  }
+  
+  .entry-card {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    transition: transform 0.2s;
+  }
+  
+  .entry-card-highlight {
+    animation: highlight 1.5s ease-out;
+  }
+  
+  @keyframes highlight {
+    0% { background-color: #fff3cd; }
+    100% { background-color: white; }
+  }
+  
+  .controls {
+    position: sticky;
+    top: 0;
+    background: white;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
