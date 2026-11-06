@@ -1,106 +1,148 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import WsModal from './Modal';
+import { PRESETS, RULES, SETTING_FIELDS, summarize, isFixable } from './lib/qc';
 
-function Errorchecking({ Entries, setHighlight }) {
-  const [checking, setChecking] = useState(false);
-  const [errors, setErrors] = useState([]);
-  const [show, setShow] = useState(false);
+const MAX_ROWS = 300;
+const SEV_RANK = { error: 0, warning: 1, info: 2 };
 
-  const checkSubtitleErrors = () => {
-    setChecking(true);
-    const foundErrors = [];
-    const highlightIndices = [];
+/**
+ * Quality check panel, docked in the timeline. Issues are recomputed live
+ * as cues change, so fixing a cue makes its issue disappear immediately.
+ * Clicking an issue selects that cue; "Fix" buttons apply automatic fixes
+ * (each one undoable).
+ */
+function QualityPanel({ open, onClose, issues, settings, onSettings, primaryId, onJump, onFix }) {
+  const [filter, setFilter] = useState(null); // rule key or null for all
+  const [showAll, setShowAll] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
-    for (let i = 0; i < Entries.length - 1; i++) {
-      const currentSubtitle = Entries[i];
-      const nextSubtitle = Entries[i + 1];
+  const summary = useMemo(() => summarize(issues), [issues]);
+  const visible = useMemo(() => {
+    const list = filter ? issues.filter(i => i.rule === filter) : issues;
+    return [...list].sort((a, b) => a.index - b.index || SEV_RANK[a.severity] - SEV_RANK[b.severity]);
+  }, [issues, filter]);
 
-      const currentStart = timeToMilliseconds(currentSubtitle.startTime);
-      const currentEnd = timeToMilliseconds(currentSubtitle.endTime);
-      const nextStart = timeToMilliseconds(nextSubtitle.startTime);
+  if (!open) return null;
 
-      if (currentEnd > nextStart) {
-        foundErrors.push({
-          type: 'Overlap',
-          message: `Overlap between cue ${i + 1} and cue ${i + 2}`,
-          subtitles: [currentSubtitle, nextSubtitle],
-        });
-        highlightIndices.push(i, i + 1);
-      }
-
-      if (currentStart > currentEnd) {
-        foundErrors.push({
-          type: 'Incorrect sequence',
-          message: `Start time of cue ${i + 1} is after its end time`,
-          subtitles: [currentSubtitle],
-        });
-        highlightIndices.push(i);
-      }
-
-      if (currentStart > nextStart) {
-        foundErrors.push({
-          type: 'Incorrect sequence',
-          message: `Cue ${i + 2} starts before cue ${i + 1} ends`,
-          subtitles: [currentSubtitle, nextSubtitle],
-        });
-        highlightIndices.push(i, i + 1);
-      }
-    }
-
-    setErrors(foundErrors);
-    setHighlight(highlightIndices);
-    setChecking(false);
-    setShow(true);
-  };
-
-  const timeToMilliseconds = (time) => {
-    const [hours, minutes, seconds] = time.split(':');
-    const [secs, ms] = seconds.split(',');
-    return (+hours) * 3600000 + (+minutes) * 60000 + (+secs) * 1000 + (+ms);
-  };
-
-  const handleCloseExportModal = () => {
-    setShow(false);
-  };
+  const activeFilter = filter && summary.byRule[filter] ? filter : null;
+  const fixableInView = visible.filter(isFixable);
+  const fixRules = new Set(fixableInView.map(i => i.rule));
+  const presetLabel = PRESETS[settings.preset]?.label || 'Custom';
 
   return (
-    <>
-      <button onClick={checkSubtitleErrors} className="ws-btn" disabled={checking}>
-        {checking ? 'Checking…' : 'Check errors'}
-      </button>
-
-      <WsModal
-        show={show}
-        onClose={handleCloseExportModal}
-        title={`${errors.length} ${errors.length === 1 ? 'issue' : 'issues'} found`}
-        tone={errors.length ? 'danger' : undefined}
-        wide
-      >
-        <WsModal.Body>
-          {errors.length === 0 ? (
-            <div className="ws-empty-state">No timing issues found — every cue is in order.</div>
-          ) : (
-            <ul className="ws-issue-list">
-              {errors.map((error, index) => (
-                <li key={index} className="ws-issue">
-                  <div className="type">{error.type}</div>
-                  <div className="msg">{error.message}</div>
-                  <ul className="subs">
-                    {error.subtitles.map((subtitle, idx) => (
-                      <li key={idx}>{subtitle.startTime} → {subtitle.endTime}: {subtitle.Text}</li>
-                    ))}
-                  </ul>
-                </li>
-              ))}
-            </ul>
+    <div className="ws-qc" role="region" aria-label="Quality check">
+      <div className="ws-qc-head">
+        <span className="ws-qc-title">Quality check</span>
+        <span className="ws-qc-summary">
+          {summary.total === 0 ? 'No issues' : (
+            <>
+              {summary.errors > 0 && <span className="sev error">{summary.errors} error{summary.errors === 1 ? '' : 's'}</span>}
+              {summary.warnings > 0 && <span className="sev warning">{summary.warnings} warning{summary.warnings === 1 ? '' : 's'}</span>}
+              {summary.total - summary.errors - summary.warnings > 0 && <span className="sev info">{summary.total - summary.errors - summary.warnings} tip{summary.total - summary.errors - summary.warnings === 1 ? '' : 's'}</span>}
+            </>
           )}
-        </WsModal.Body>
-        <WsModal.Footer>
-          <button className="ws-btn primary" onClick={handleCloseExportModal}>Close</button>
-        </WsModal.Footer>
-      </WsModal>
-    </>
+        </span>
+        <span className="ws-spacer" />
+        <button className="ws-chip" onClick={() => setSettingsOpen(true)} title="Limits used by the check">{presetLabel.split(' (')[0]} ⚙</button>
+        <button className="ws-btn" onClick={() => onFix({ rules: fixRules })} disabled={!fixableInView.length}
+                title="Apply every automatic fix in this list (one Undo step)">
+          Fix {activeFilter ? RULES[activeFilter].label.toLowerCase() : 'all'} ({fixableInView.length})
+        </button>
+        <button className="ws-icon-btn" onClick={onClose} title="Close (Q)" aria-label="Close quality check">✕</button>
+      </div>
+
+      {summary.total > 0 && (
+        <div className="ws-qc-chips">
+          <button className={`ws-chip${!activeFilter ? ' on' : ''}`} onClick={() => setFilter(null)}>All {summary.total}</button>
+          {Object.keys(RULES).filter(r => summary.byRule[r]).map(r => (
+            <button key={r} className={`ws-chip sev-${RULES[r].severity}${activeFilter === r ? ' on' : ''}`}
+                    onClick={() => setFilter(activeFilter === r ? null : r)}>
+              {RULES[r].label} {summary.byRule[r]}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="ws-qc-list">
+        {summary.total === 0 ? (
+          <div className="ws-qc-empty">Everything passes the {presetLabel.toLowerCase()} checks.</div>
+        ) : (
+          <>
+            {(showAll ? visible : visible.slice(0, MAX_ROWS)).map(issue => (
+              <div
+                key={issue.key}
+                className={`ws-qc-item ${issue.severity}${issue.id === primaryId ? ' current' : ''}`}
+                onClick={() => onJump(issue.id)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter') onJump(issue.id); }}
+              >
+                <span className="dot" aria-label={issue.severity} />
+                <span className="idx">#{issue.index + 1}</span>
+                <span className="rule">{RULES[issue.rule].label}</span>
+                <span className="msg">{issue.message}</span>
+                {issue.fix && (
+                  <button className="ws-mini-btn" onClick={(e) => {
+                    e.stopPropagation();
+                    onFix({ rules: new Set([issue.rule]), ids: issue.rule === 'order' ? null : new Set([issue.id]) });
+                  }}>{issue.fix}</button>
+                )}
+              </div>
+            ))}
+            {!showAll && visible.length > MAX_ROWS && (
+              <button className="ws-linklike ws-qc-more" onClick={() => setShowAll(true)}>Show all {visible.length}</button>
+            )}
+          </>
+        )}
+      </div>
+
+      <QcSettings show={settingsOpen} onClose={() => setSettingsOpen(false)} settings={settings} onSave={onSettings} />
+    </div>
   );
 }
 
-export default Errorchecking;
+function QcSettings({ show, onClose, settings, onSave }) {
+  const [draft, setDraft] = useState(settings);
+  React.useEffect(() => { if (show) setDraft(settings); }, [show, settings]);
+
+  const pickPreset = (key) => setDraft(key === 'custom' ? { ...draft, preset: 'custom' } : { preset: key, ...PRESETS[key] });
+  const setField = (k, v) => {
+    const n = v === '' ? 0 : Math.max(0, Number(v));
+    if (Number.isNaN(n)) return;
+    setDraft(d => ({ ...d, [k]: n, preset: 'custom' }));
+  };
+
+  return (
+    <WsModal show={show} onClose={onClose} title="Quality check limits">
+      <WsModal.Body>
+        <div className="ws-form-group">
+          <label>Preset</label>
+          <div className="ws-segmented">
+            {Object.entries(PRESETS).map(([k, p]) => (
+              <button key={k} className={draft.preset === k ? 'on' : ''} onClick={() => pickPreset(k)}>{p.label.split(' (')[0]}</button>
+            ))}
+            <button className={draft.preset === 'custom' ? 'on' : ''} onClick={() => pickPreset('custom')}>Custom</button>
+          </div>
+          <div className="ws-form-hint">{PRESETS[draft.preset]?.label || 'Your own limits'}</div>
+        </div>
+        <div className="ws-qc-fields">
+          {SETTING_FIELDS.map(([k, label, unit]) => (
+            <label key={k} className="ws-qc-field">
+              <span>{label}</span>
+              <input className="ws-input" type="number" min="0" step={unit === 'ms' ? 50 : 1}
+                     value={draft[k]} onChange={(e) => setField(k, e.target.value)} />
+              <em>{unit}</em>
+            </label>
+          ))}
+        </div>
+        <div className="ws-form-note">Set any limit to 0 to switch that check off. The counters under the text field use the same limits.</div>
+      </WsModal.Body>
+      <WsModal.Footer>
+        <button className="ws-btn" onClick={onClose}>Cancel</button>
+        <button className="ws-btn primary" onClick={() => { onSave(draft); onClose(); }}>Save limits</button>
+      </WsModal.Footer>
+    </WsModal>
+  );
+}
+
+export default QualityPanel;

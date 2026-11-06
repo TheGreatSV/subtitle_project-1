@@ -4,19 +4,21 @@ import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 import Project from './Project';
-import { BrowserRouter as Router, Route, Switch, Routes } from 'react-router-dom';
-
+import { ToastProvider } from './Toast';
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-  <Router>
-    <Routes>
-      <Route path="/" element={<Project />} />  {/* Use element instead of component */}
-      <Route path="/Editor" element={<App />} />      {/* Use element instead of component */}
-    </Routes>
-  </Router>
-</React.StrictMode>
+    <ToastProvider>
+      <Router>
+        <Routes>
+          <Route path="/" element={<Project />} />
+          <Route path="/Editor" element={<App />} />
+        </Routes>
+      </Router>
+    </ToastProvider>
+  </React.StrictMode>
 );
 
 // If you want to start measuring performance in your app, pass a function

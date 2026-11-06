@@ -1,118 +1,131 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import WsModal from './Modal';
 
-function ShiftTiming({ Entries, setEntries, formatDuration }) {
-  const [startSeconds, setStartSeconds] = useState(0);
-  const [startMilliseconds, setStartMilliseconds] = useState(0);
-  const [endSeconds, setEndSeconds] = useState(0);
-  const [endMilliseconds, setEndMilliseconds] = useState(0);
-  const [show, setShow] = useState(false);
+/**
+ * Shift every cue's start/end by a signed millisecond offset.
+ * Times clamp at 0; a cue's end never ends up before its start.
+ * Returns { cues, clamped } where clamped counts cues that hit a limit.
+ */
+export function shiftCues(cues, startDeltaMs, endDeltaMs) {
+  let clamped = 0;
+  const next = cues.map((c) => {
+    let startMs = c.startMs + startDeltaMs;
+    let endMs = c.endMs + endDeltaMs;
+    let hit = false;
+    if (startMs < 0) { startMs = 0; hit = true; }
+    if (endMs < startMs) { endMs = startMs; hit = true; }
+    if (hit) clamped += 1;
+    return { ...c, startMs: Math.round(startMs), endMs: Math.round(endMs) };
+  });
+  return { cues: next, clamped };
+}
 
-  const handleClose = () => setShow(false);
-  const showDialog = () => setShow(true);
+/** "1.5" → 1500, "-0.25" → -250, "" → 0, garbage → NaN */
+export function parseOffsetSeconds(str) {
+  const s = String(str).trim().replace(',', '.');
+  if (s === '' || s === '-' || s === '+') return 0;
+  if (!/^[+-]?(\d+(\.\d*)?|\.\d+)$/.test(s)) return NaN;
+  return Math.round(parseFloat(s) * 1000);
+}
 
-  function convertToSeconds(timeStr) {
-    const [time, ms] = timeStr.split(',');
-    const [hours, minutes, seconds] = time.split(':');
-    return (
-      parseInt(hours, 10) * 3600 +
-      parseInt(minutes, 10) * 60 +
-      parseFloat(seconds) +
-      parseInt(ms, 10) / 1000
-    );
-  }
+/**
+ * Controlled dialog: the workspace owns `show` so it can open it from the
+ * toolbar or from the multi-selection panel. Scope is all cues, or only the
+ * selected ones when there is a multi-selection.
+ */
+function ShiftTiming({ show, onClose, cues, selectedIds, defaultScope = 'all', onApply }) {
+  const [startOffset, setStartOffset] = useState('0');
+  const [endOffset, setEndOffset] = useState('0');
+  const [linked, setLinked] = useState(true);
+  const [scope, setScope] = useState(defaultScope);
+
+  const selectedCount = selectedIds ? selectedIds.size : 0;
+
+  useEffect(() => {
+    if (show) setScope(selectedCount > 1 ? defaultScope : 'all');
+  }, [show, defaultScope, selectedCount]);
+
+  const startMs = parseOffsetSeconds(startOffset);
+  const endMs = linked ? startMs : parseOffsetSeconds(endOffset);
+  const invalid = Number.isNaN(startMs) || Number.isNaN(endMs);
+  const noChange = !invalid && startMs === 0 && endMs === 0;
+  const targetCount = scope === 'selected' ? selectedCount : cues.length;
 
   const handleShift = () => {
-    const updatedEntries = Entries.map((entry) => {
-      const currentStart = convertToSeconds(entry.startTime);
-      const currentEnd = convertToSeconds(entry.endTime);
-
-      let totalSecondsStart = +startSeconds + startMilliseconds / 1000;
-      let totalSecondsEnd = +endSeconds + endMilliseconds / 1000;
-
-      totalSecondsStart = startSeconds < 0
-        ? currentStart - Math.abs(totalSecondsStart)
-        : currentStart + totalSecondsStart;
-
-      totalSecondsEnd = endSeconds < 0
-        ? currentEnd - Math.abs(totalSecondsEnd)
-        : currentEnd + totalSecondsEnd;
-
-      return {
-        ...entry,
-        startTime: formatDuration(totalSecondsStart),
-        endTime: formatDuration(totalSecondsEnd),
-      };
-    });
-
-    setEntries(updatedEntries);
-    handleClose();
+    if (invalid || noChange) return;
+    const ids = scope === 'selected' ? selectedIds : null;
+    const target = ids ? cues.filter(c => ids.has(c.id)) : cues;
+    const { cues: shifted, clamped } = shiftCues(target, startMs, endMs);
+    const byId = new Map(shifted.map(c => [c.id, c]));
+    const next = cues.map(c => byId.get(c.id) || c);
+    onApply(next, { count: shifted.length, clamped });
+    setStartOffset('0');
+    setEndOffset('0');
+    onClose();
   };
 
-  const noChange = !+startSeconds && !+startMilliseconds && !+endSeconds && !+endMilliseconds;
-
   return (
-    <>
-      <button className="ws-btn" onClick={showDialog}>Shift timing</button>
-
-      <WsModal show={show} onClose={handleClose} title="Shift timing of all cues">
-        <WsModal.Body>
+    <WsModal show={show} onClose={onClose} title="Shift timing">
+      <WsModal.Body>
+        {selectedCount > 1 && (
           <div className="ws-form-group">
-            <label>Start time offset</label>
-            <div className="ws-form-row" style={{ marginBottom: 0 }}>
-              <input
-                type="number"
-                className="ws-input"
-                placeholder="Seconds"
-                value={startSeconds}
-                onChange={(e) => setStartSeconds(e.target.value)}
-              />
-              <input
-                type="number"
-                className="ws-input"
-                placeholder="Milliseconds"
-                value={startMilliseconds}
-                onChange={(e) => setStartMilliseconds(e.target.value)}
-              />
+            <label>Apply to</label>
+            <div className="ws-segmented">
+              <button className={scope === 'all' ? 'on' : ''} onClick={() => setScope('all')}>All cues ({cues.length})</button>
+              <button className={scope === 'selected' ? 'on' : ''} onClick={() => setScope('selected')}>Selected ({selectedCount})</button>
             </div>
           </div>
+        )}
 
+        <div className="ws-form-group">
+          <label>{linked ? 'Offset (seconds)' : 'Start offset (seconds)'}</label>
+          <input
+            className="ws-input"
+            inputMode="decimal"
+            placeholder="e.g. 1.5 or -0.250"
+            value={startOffset}
+            onChange={(e) => setStartOffset(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleShift(); }}
+            autoFocus
+          />
+        </div>
+
+        {!linked && (
           <div className="ws-form-group">
-            <label>End time offset</label>
-            <div className="ws-form-row" style={{ marginBottom: 0 }}>
-              <input
-                type="number"
-                className="ws-input"
-                placeholder="Seconds"
-                value={endSeconds}
-                onChange={(e) => setEndSeconds(e.target.value)}
-              />
-              <input
-                type="number"
-                className="ws-input"
-                placeholder="Milliseconds"
-                value={endMilliseconds}
-                onChange={(e) => setEndMilliseconds(e.target.value)}
-              />
-            </div>
+            <label>End offset (seconds)</label>
+            <input
+              className="ws-input"
+              inputMode="decimal"
+              placeholder="e.g. 1.5 or -0.250"
+              value={endOffset}
+              onChange={(e) => setEndOffset(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleShift(); }}
+            />
           </div>
+        )}
 
-          <div className="ws-form-note">
-            This shifts every cue in the timeline, not just the selected one.
-            <ul>
-              <li>Positive values push times later; negative values pull them earlier.</li>
-              <li>Leave a field at 0 to leave that edge unchanged.</li>
-            </ul>
-          </div>
-        </WsModal.Body>
-        <WsModal.Footer>
-          <button className="ws-btn" onClick={handleClose}>Cancel</button>
-          <button className="ws-btn primary" onClick={handleShift} disabled={noChange}>
-            Shift {Entries.length} cue{Entries.length === 1 ? '' : 's'}
-          </button>
-        </WsModal.Footer>
-      </WsModal>
-    </>
+        <label className="ws-form-check">
+          <input type="checkbox" checked={!linked} onChange={(e) => setLinked(!e.target.checked)} />
+          {' '}Shift start and end by different amounts
+        </label>
+
+        {invalid && <div className="ws-form-error">Enter a number of seconds, like 2, 0.5 or -1.250.</div>}
+
+        <div className="ws-form-note">
+          <ul>
+            <li>Positive values push times later; negative values pull them earlier.</li>
+            <li>Times stop at 00:00:00,000 — nothing goes negative.</li>
+            <li>You can undo this with Ctrl+Z.</li>
+          </ul>
+        </div>
+      </WsModal.Body>
+      <WsModal.Footer>
+        <button className="ws-btn" onClick={onClose}>Cancel</button>
+        <button className="ws-btn primary" onClick={handleShift} disabled={invalid || noChange}>
+          Shift {targetCount} cue{targetCount === 1 ? '' : 's'}
+        </button>
+      </WsModal.Footer>
+    </WsModal>
   );
 }
 

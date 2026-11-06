@@ -1,39 +1,24 @@
 import React, { useState } from 'react';
 import ExportDialog from './ExportDialog';
+import { useToast } from './Toast';
 
-function ExportSrt({ Entries }) {
-  const [show, setShow] = useState(false);
-
-  const ShowDialog = () => setShow(true);
-
-  const convertToSrt = (entries) => {
-    return entries
-      .map((entry, index) => {
-        const { startTime, endTime, Text } = entry;
-        return `${index + 1}\n${startTime} --> ${endTime}\n${Text}\n`;
-      })
-      .join('\n');
-  };
-
-  const saveSrtFile = (entries, filename) => {
-    const srtContent = convertToSrt(entries);
-    const blob = new Blob([srtContent], { type: 'text/srt' });
-    const url = URL.createObjectURL(blob);
-
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename + '.srt';
-    document.body.appendChild(link);
-    link.click();
-
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
+/** Toolbar "Export" button + dialog (SRT, VTT, ASS, SBV, TXT, CSV). */
+function ExportSrt({ cues, defaultName, show, setShow }) {
+  const [localShow, setLocalShow] = useState(false);
+  const open = show ?? localShow;
+  const setOpen = setShow ?? setLocalShow;
+  const toast = useToast();
 
   return (
     <>
-      <button className="ws-btn" onClick={ShowDialog} disabled={Entries.length === 0}>Export SRT</button>
-      <ExportDialog show={show} saveSrtFile={saveSrtFile} Entries={Entries} setShow={setShow} />
+      <button className="ws-btn" onClick={() => setOpen(true)} disabled={cues.length === 0} title="Export (Ctrl+Shift+E)">Export</button>
+      <ExportDialog
+        show={open}
+        setShow={setOpen}
+        cues={cues}
+        defaultName={defaultName}
+        onExported={(name) => toast.success(`Exported ${name} (${cues.length} cue${cues.length === 1 ? '' : 's'})`)}
+      />
     </>
   );
 }

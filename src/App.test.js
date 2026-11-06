@@ -1,8 +1,16 @@
 import { render, screen } from '@testing-library/react';
-import App from './App';
+import { MemoryRouter } from 'react-router-dom';
+import ProjectsPage from './Project';
+import { ToastProvider } from './Toast';
 
-test('renders learn react link', () => {
-  render(<App />);
-  const linkElement = screen.getByText(/learn react/i);
-  expect(linkElement).toBeInTheDocument();
+test('projects page renders the empty state', async () => {
+  localStorage.clear();
+  render(
+    <ToastProvider>
+      <MemoryRouter>
+        <ProjectsPage />
+      </MemoryRouter>
+    </ToastProvider>
+  );
+  expect(await screen.findByText(/No projects yet/i)).toBeInTheDocument();
 });

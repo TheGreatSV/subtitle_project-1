@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import WsModal from './Modal';
 
-function BulkDelete({ Entries, setEntries, Divs, setDivs }) {
+function BulkDelete({ cues, setCues, onDeleted }) {
   const [startIndex, setStartIndex] = useState('');
   const [endIndex, setEndIndex] = useState('');
   const [show, setShow] = useState(false);
@@ -14,51 +14,37 @@ function BulkDelete({ Entries, setEntries, Divs, setDivs }) {
     setErrorMessage('');
   };
 
-  const showDialog = () => setShow(true);
+  const deleteRange = () => {
+    const start = parseInt(startIndex, 10) - 1;
+    const end = parseInt(endIndex, 10) - 1;
 
-  const deleteEntriesBulk = () => {
-    const start = parseInt(startIndex) - 1;
-    const end = parseInt(endIndex) - 1;
-
-    if (isNaN(start) || isNaN(end) || start < 0 || end < 0 || start > end || end >= Entries.length) {
-      setErrorMessage('Invalid start or end index. Please ensure the indices are valid.');
+    if (Number.isNaN(start) || Number.isNaN(end) || start < 0 || start > end || end >= cues.length) {
+      setErrorMessage(`Enter a range between 1 and ${cues.length}, with start ≤ end.`);
       return;
     }
 
-    const updatedEntries = Entries.filter((_, index) => index < start || index > end);
-    const updatedDivs = Divs.filter((_, index) => index < start || index > end);
-
-    setEntries(updatedEntries);
-    setDivs(updatedDivs);
+    const removed = cues.slice(start, end + 1).map(c => c.id);
+    setCues(cues.filter((_, i) => i < start || i > end));
+    onDeleted?.(removed);
     handleClose();
   };
 
   return (
     <>
-      <button onClick={showDialog} className="ws-btn danger">Bulk delete</button>
+      <button onClick={() => setShow(true)} className="ws-btn danger" disabled={cues.length === 0}>Bulk delete</button>
 
       <WsModal show={show} onClose={handleClose} title="Delete multiple cues" tone="danger">
         <WsModal.Body>
           <div className="ws-form-row">
             <div className="ws-form-group">
               <label>Start index (1-based)</label>
-              <input
-                type="number"
-                className="ws-input"
-                placeholder="e.g. 3"
-                value={startIndex}
-                onChange={(e) => setStartIndex(e.target.value)}
-              />
+              <input type="number" min="1" max={cues.length} className="ws-input" placeholder="e.g. 3"
+                     value={startIndex} onChange={(e) => setStartIndex(e.target.value)} />
             </div>
             <div className="ws-form-group">
               <label>End index (1-based)</label>
-              <input
-                type="number"
-                className="ws-input"
-                placeholder="e.g. 8"
-                value={endIndex}
-                onChange={(e) => setEndIndex(e.target.value)}
-              />
+              <input type="number" min="1" max={cues.length} className="ws-input" placeholder="e.g. 8"
+                     value={endIndex} onChange={(e) => setEndIndex(e.target.value)} />
             </div>
           </div>
 
@@ -74,7 +60,7 @@ function BulkDelete({ Entries, setEntries, Divs, setDivs }) {
         </WsModal.Body>
         <WsModal.Footer>
           <button className="ws-btn" onClick={handleClose}>Cancel</button>
-          <button className="ws-btn danger-solid" onClick={deleteEntriesBulk}>Delete range</button>
+          <button className="ws-btn danger-solid" onClick={deleteRange}>Delete range</button>
         </WsModal.Footer>
       </WsModal>
     </>

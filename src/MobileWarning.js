@@ -27,7 +27,6 @@ function MobileWarning() {
 
   return (
     <div>
-      <h1></h1>
       {showMessage && (
         <div style={styles.messageBox}>
           <p style={styles.messageText}>
