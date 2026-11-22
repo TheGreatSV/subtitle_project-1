@@ -6,6 +6,10 @@ export const SHORTCUTS = [
     ['Space', 'Play / pause'],
     ['← / →', 'Seek 1s back / forward (Shift: 5s)'],
     ['Click a cue', 'Select it and jump the video to its start'],
+    ['< / >', 'Slower / faster playback (0.5× – 2×)'],
+    ['L', 'Loop the selected cue (or the selection)'],
+    ['Ctrl+K', 'Typing mode on / off'],
+    ['In typing mode', 'Enter adds a cue · Tab play/pause · Shift+Tab back 2s · Esc clears'],
   ]],
   ['Selection', [
     ['↑ / ↓', 'Previous / next cue (Shift: extend selection)'],
@@ -14,6 +18,16 @@ export const SHORTCUTS = [
     ['Ctrl+A', 'Select all cues'],
     ['Home / End', 'First / last cue'],
     ['Esc', 'Clear selection'],
+  ]],
+  ['Waveform timeline', [
+    ['Drag a cue edge', 'Re-time that edge (snaps to other cues and the playhead)'],
+    ['Drag a cue', 'Move it — or the whole selection'],
+    ['Drag empty space', 'Create a new cue over that range'],
+    ['Alt while dragging', 'Turn snapping off'],
+    ['Double-click a cue', 'Edit its text'],
+    ['Ctrl+scroll', 'Zoom around the pointer'],
+    ['+ / −', 'Zoom in / out'],
+    ['W', 'Show / hide the waveform'],
   ]],
   ['Timing', [
     ['I', 'Set start of selected cue to playhead'],
@@ -26,6 +40,7 @@ export const SHORTCUTS = [
     ['Ctrl+Shift+E', 'Export (SRT, VTT, ASS, SBV, TXT, CSV)'],
     ['Drag & drop', 'Drop a subtitle file to import it, or a video to open it'],
     ['Q', 'Open / close the quality check'],
+    ['T', 'Tools: frame rate, two-point sync, text clean-up'],
     ['Ctrl+S', 'Save now'],
   ]],
   ['Editing', [

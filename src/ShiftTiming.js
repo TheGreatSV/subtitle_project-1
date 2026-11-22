@@ -33,7 +33,7 @@ export function parseOffsetSeconds(str) {
  * toolbar or from the multi-selection panel. Scope is all cues, or only the
  * selected ones when there is a multi-selection.
  */
-function ShiftTiming({ show, onClose, cues, selectedIds, defaultScope = 'all', onApply }) {
+function ShiftTiming({ show, onClose, cues, selectedIds, fromIndex = null, defaultScope = 'all', onApply }) {
   const [startOffset, setStartOffset] = useState('0');
   const [endOffset, setEndOffset] = useState('0');
   const [linked, setLinked] = useState(true);
@@ -41,19 +41,27 @@ function ShiftTiming({ show, onClose, cues, selectedIds, defaultScope = 'all', o
 
   const selectedCount = selectedIds ? selectedIds.size : 0;
 
+  // "From cue #N onward" — the usual fix when sync breaks after an ad break or a cut.
+  const canFrom = fromIndex != null && fromIndex > 0 && fromIndex < cues.length;
+
   useEffect(() => {
-    if (show) setScope(selectedCount > 1 ? defaultScope : 'all');
-  }, [show, defaultScope, selectedCount]);
+    if (!show) return;
+    if (defaultScope === 'selected' && selectedCount > 1) setScope('selected');
+    else if (defaultScope === 'from' && canFrom) setScope('from');
+    else setScope('all');
+  }, [show, defaultScope, selectedCount, canFrom]);
 
   const startMs = parseOffsetSeconds(startOffset);
   const endMs = linked ? startMs : parseOffsetSeconds(endOffset);
   const invalid = Number.isNaN(startMs) || Number.isNaN(endMs);
   const noChange = !invalid && startMs === 0 && endMs === 0;
-  const targetCount = scope === 'selected' ? selectedCount : cues.length;
+  const targetCount = scope === 'selected' ? selectedCount : scope === 'from' && canFrom ? cues.length - fromIndex : cues.length;
 
   const handleShift = () => {
     if (invalid || noChange) return;
-    const ids = scope === 'selected' ? selectedIds : null;
+    const ids = scope === 'selected' ? selectedIds
+      : scope === 'from' && canFrom ? new Set(cues.slice(fromIndex).map(c => c.id))
+      : null;
     const target = ids ? cues.filter(c => ids.has(c.id)) : cues;
     const { cues: shifted, clamped } = shiftCues(target, startMs, endMs);
     const byId = new Map(shifted.map(c => [c.id, c]));
@@ -67,12 +75,17 @@ function ShiftTiming({ show, onClose, cues, selectedIds, defaultScope = 'all', o
   return (
     <WsModal show={show} onClose={onClose} title="Shift timing">
       <WsModal.Body>
-        {selectedCount > 1 && (
+        {(selectedCount > 1 || canFrom) && (
           <div className="ws-form-group">
             <label>Apply to</label>
             <div className="ws-segmented">
               <button className={scope === 'all' ? 'on' : ''} onClick={() => setScope('all')}>All cues ({cues.length})</button>
-              <button className={scope === 'selected' ? 'on' : ''} onClick={() => setScope('selected')}>Selected ({selectedCount})</button>
+              {selectedCount > 1 && (
+                <button className={scope === 'selected' ? 'on' : ''} onClick={() => setScope('selected')}>Selected ({selectedCount})</button>
+              )}
+              {canFrom && (
+                <button className={scope === 'from' ? 'on' : ''} onClick={() => setScope('from')}>From #{fromIndex + 1} onward ({cues.length - fromIndex})</button>
+              )}
             </div>
           </div>
         )}

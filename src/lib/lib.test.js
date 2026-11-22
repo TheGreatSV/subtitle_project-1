@@ -1,7 +1,7 @@
 import { parseTime, formatTime, formatVttTime, maskTimeInput, isCompleteTime } from './time';
 import { parseSrt, cuesToSrt, cuesToVtt, fromLegacyEntries, normalizeCues } from './cues';
 import { shiftCues, parseOffsetSeconds } from '../ShiftTiming';
-import { ensureMigrated, listProjects, loadCues, createProject, saveCues, deleteProject } from './storage';
+import { ensureMigrated, listProjects, loadCues, createProject, saveCues, deleteProject, writeRescue } from './storage';
 
 describe('time', () => {
   test('parse/format round-trip', () => {
@@ -110,5 +110,28 @@ describe('storage (localStorage fallback in jsdom)', () => {
     expect(await loadCues('p')).toHaveLength(0);
     await deleteProject('p');
     expect((await listProjects()).some(x => x.name === 'p')).toBe(false);
+  });
+
+  test('rescue copy written on page close wins on next load, then is cleared', async () => {
+    await createProject('r');
+    await saveCues('r', [{ id: 'a', startMs: 1, endMs: 2, text: 'old' }]);
+    writeRescue('r', [{ id: 'a', startMs: 1, endMs: 2, text: 'newer' }]);
+    expect((await loadCues('r'))[0].text).toBe('newer');
+    expect(localStorage.getItem('srtc:rescue:r')).toBeNull();
+    expect((await loadCues('r'))[0].text).toBe('newer');
+  });
+
+  test('an older save finishing late does not discard a newer rescue copy', async () => {
+    await createProject('s');
+    writeRescue('s', [{ id: 'a', startMs: 1, endMs: 2, text: 'newest' }]);
+    await saveCues('s', [{ id: 'a', startMs: 1, endMs: 2, text: 'older' }]);
+    expect((await loadCues('s'))[0].text).toBe('newest');
+  });
+
+  test('corrupt rescue copy is ignored', async () => {
+    await createProject('c');
+    await saveCues('c', [{ id: 'a', startMs: 1, endMs: 2, text: 'kept' }]);
+    localStorage.setItem('srtc:rescue:c', '{not json');
+    expect((await loadCues('c'))[0].text).toBe('kept');
   });
 });

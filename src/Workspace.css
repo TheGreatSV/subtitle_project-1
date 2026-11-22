@@ -65,7 +65,7 @@ body{
 .workspace{
   height: 100vh;
   display: grid;
-  grid-template-rows: 48px 1fr;
+  grid-template-rows: 48px minmax(0, 1fr) auto; /* toolbar · panes · waveform */
   background: var(--bg);
   overflow: hidden;
 }
@@ -507,3 +507,144 @@ textarea.ws-quick-text{ min-height: 0; resize: none; line-height: 1.35; padding-
   font: 9.5px var(--mono); font-style: normal; text-transform: uppercase; letter-spacing: .04em;
   color: var(--s-300); border: 1px solid var(--border); border-radius: 3px; padding: 0 4px; margin-right: 6px;
 }
+
+/* ---------------------------------------------------------
+   Short windows: nothing may be cut off
+   - video scales with the window height instead of a fixed 240px
+   - the video pane scrolls if its controls still don't fit
+   --------------------------------------------------------- */
+.ws-video-wrap{
+  /* about a third of the window, but never so tall that the controls below it and the
+     waveform strip (~490px together) get pushed out of a short window */
+  height: clamp(110px, min(34vh, 100vh - 490px), 380px);
+  flex: none; display: flex;
+}
+.ws-video-wrap > .react-player{ flex: 1; min-width: 0; }
+.ws-video-wrap > .ws-empty-video{ height: 100%; padding-top: 12px; padding-bottom: 12px; }
+.ws-pane.video > *{ flex: none; }
+@media (min-width: 901px){
+  .ws-pane.video{ overflow-y: auto; overscroll-behavior: contain; }
+}
+
+/* ---------------------------------------------------------
+   Subtitle overlay on the video preview
+   Size follows the player height (container units) × the user's A−/A+ scale.
+   --------------------------------------------------------- */
+.ws-video-wrap{ position: relative; container-type: size; }
+.ws-sub-overlay{
+  position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  display: flex; flex-direction: column;
+  padding: 5cqh 5cqw max(56px, 15cqh); /* bottom clears the native control bar */
+  font: 500 calc(clamp(15px, 7cqh, 40px) * var(--sub-scale, 1)) / 1.28 var(--sans);
+  color: #fff;
+}
+.ws-sub-region{ display: flex; flex-direction: column; gap: .25em; }
+.ws-sub-region.bottom{ margin-top: auto; }
+.ws-sub-cue{ display: flex; flex-direction: column; align-items: center; text-align: center; }
+.ws-sub-line{
+  display: block; max-width: 100%;
+  background: rgba(0,0,0,.72); padding: .06em .38em; border-radius: 2px;
+  text-shadow: 0 1px 2px rgba(0,0,0,.6);
+  overflow-wrap: anywhere;
+}
+.ws-sub-line + .ws-sub-line{ margin-top: 0; }
+.ws-sub-size{ display: inline-flex; align-items: center; gap: 2px; font: 11px var(--mono); color: var(--text-muted); }
+.ws-sub-size span{ min-width: 38px; text-align: center; }
+.ws-sub-size .ws-icon-btn{ width: auto; padding: 0 6px; font-family: var(--sans); font-size: 12px; }
+.ws-video-meta{ flex-wrap: wrap; row-gap: 6px; }
+.ws-pane-title{ min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ws-pane-header .ws-sub-size .ws-icon-btn{ height: 20px; line-height: 1; }
+.ws-pane-header .ws-sub-size span{ text-transform: none; letter-spacing: 0; }
+
+/* Narrower video pane (laptops / small windows): keep the row under the video on one line */
+@media (min-width: 901px) and (max-width: 1280px){
+  .ws-video-meta .ws-kbd, .ws-video-meta .ws-meta-label{ display: none; }
+  .ws-video-meta{ gap: 8px; }
+}
+
+/* ---------------------------------------------------------
+   Tools dialog
+   --------------------------------------------------------- */
+.ws-tools{ display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 18px; min-height: 360px; }
+.ws-tools-nav{ display: flex; flex-direction: column; gap: 14px; border-right: 1px solid var(--border-soft); padding-right: 14px; }
+.ws-tools-group-title{ font: 600 11px var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--text-dim); margin-bottom: 6px; }
+.ws-tools-item{
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%;
+  padding: 7px 9px; border-radius: 4px; border: 1px solid transparent; background: transparent;
+  color: var(--text); text-align: left; cursor: pointer; font: 13px var(--sans);
+}
+.ws-tools-item span{ font-size: 11.5px; color: var(--text-dim); }
+.ws-tools-item:hover{ background: var(--s-850); }
+.ws-tools-item.on{ background: rgba(77,141,255,.12); border-color: var(--accent-dim); }
+.ws-tools-item.on b{ color: var(--accent-text); }
+.ws-tools-main{ display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.ws-tools-main select.ws-input{ height: 34px; }
+.ws-tools-note{ margin: 0; }
+.ws-tools-checks{ display: flex; flex-direction: column; }
+.ws-tools-checks .ws-form-check{ margin: 2px 0; }
+.ws-tools-main code{ font: 11.5px var(--mono); background: var(--s-850); border: 1px solid var(--border-soft); border-radius: 3px; padding: 0 4px; color: var(--s-200); }
+.ws-tools-list{ margin: 0; padding-left: 18px; font-size: 13px; color: var(--s-200); display: flex; flex-direction: column; gap: 4px; }
+.ws-tools-point{ border: 1px solid var(--border-soft); border-radius: 5px; padding: 10px 12px; }
+.ws-tools-point-title{ font: 600 11px var(--mono); text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); margin-bottom: 8px; }
+.ws-tools-point-row{ display: grid; grid-template-columns: 86px minmax(0, 1fr); gap: 8px 12px; align-items: end; }
+.ws-tools-point-row label.grow{ grid-column: 1 / -1; }
+.ws-tools-point-row label{ display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--text-dim); }
+.ws-tools-now{ font: 12px var(--mono); color: var(--s-300); min-width: 0; padding-bottom: 8px; }
+.ws-tools-now em{ display: block; font: italic 12px var(--sans); color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ws-tools-time{ display: flex; gap: 6px; align-items: center; }
+.ws-tools-time .ws-input{ flex: 1; min-width: 0; max-width: 220px; }
+.ws-tools-preview{ border: 1px solid var(--border-soft); border-radius: 5px; overflow: hidden; margin-top: auto; }
+.ws-tools-preview-head{ padding: 7px 10px; font: 600 11px var(--mono); text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); background: var(--s-850); }
+.ws-tools-change{ display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 8px; padding: 6px 10px; border-top: 1px solid var(--border-soft); font-size: 12.5px; }
+.ws-tools-change .n{ font: 11px var(--mono); color: var(--text-dim); padding-top: 1px; }
+.ws-tools-change .d{ display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ws-tools-change .d.timing{ flex-direction: row; align-items: baseline; gap: 8px; font: 12px var(--mono); }
+.ws-tools-change .d.timing b{ color: var(--accent-text); }
+.ws-tools-change s{ color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ws-tools-change b{ font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ws-tools-change.removed b{ color: #ff8b88; }
+.ws-tools-more{ padding: 6px 10px; border-top: 1px solid var(--border-soft); font-size: 12px; color: var(--text-dim); }
+@media (max-width: 760px){
+  .ws-tools{ grid-template-columns: 1fr; }
+  .ws-tools-nav{ border-right: 0; border-bottom: 1px solid var(--border-soft); padding: 0 0 10px; flex-direction: row; flex-wrap: wrap; }
+  .ws-tools-item span{ display: none; }
+  .ws-tools-point-row{ grid-template-columns: 1fr; }
+}
+
+/* ---------------------------------------------------------
+   Playback bar (speed · loop · rewind · typing mode)
+   --------------------------------------------------------- */
+.ws-playbar{
+  flex: none; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; row-gap: 6px;
+  padding: 6px 12px; border-bottom: 1px solid var(--border-soft);
+  font-size: 12px; color: var(--text-muted);
+}
+.ws-pb-item{ display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.ws-pb-select{
+  height: 24px; padding: 0 4px; border-radius: 4px;
+  background: var(--s-850); color: var(--text); border: 1px solid var(--border);
+  font: 12px var(--mono);
+}
+.ws-playbar .ws-chip{ height: 24px; }
+.ws-playbar .ws-chip:disabled{ opacity: .4; cursor: not-allowed; }
+.ws-typing-btn{ height: 26px; }
+@media (min-width: 901px) and (max-width: 1280px){
+  .ws-pb-item span{ display: none; }
+}
+
+/* Typing mode panel */
+.ws-typing{
+  flex: none; display: flex; flex-direction: column; gap: 8px;
+  padding: 10px 12px; border-top: 2px solid var(--accent);
+  background: rgba(77,141,255,.05);
+}
+.ws-typing-head{ display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text-muted); min-width: 0; }
+.ws-typing-title{ font: 600 11px var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--accent-text); white-space: nowrap; }
+.ws-typing-next{ display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.ws-typing-next b{ font: 12px var(--mono); color: var(--text); font-weight: 500; }
+.ws-typing-count{ font: 11px var(--mono); color: #3fb37f; white-space: nowrap; }
+textarea.ws-typing-input{ min-height: 0; resize: none; font-size: 15px; line-height: 1.4; padding: 8px 10px; }
+.ws-typing-foot{ display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.ws-typing-foot .keys{ font-size: 11px; color: var(--text-dim); }
+.ws-typing-foot .keys b{ color: var(--s-300); font-weight: 600; }
+.ws-typing-foot .ws-form-check{ margin: 0; font-size: 12px; }

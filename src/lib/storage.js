@@ -177,6 +177,8 @@ export async function deleteProject(name) {
   await writeProjects(next);
   await kvDel(`cues:${name}`);
   await kvDel(`video:${name}`);
+  await kvDel(`peaks:${name}`);
+  clearRescue(name);
   return next;
 }
 
@@ -195,13 +197,44 @@ export async function projectExists(name) {
 // Cues
 // ---------------------------------------------------------------------------
 
+// Rescue copy: IndexedDB writes are async and can be cut off when the page is
+// reloaded or closed. On leaving, the editor also writes a synchronous
+// localStorage copy; the next load prefers it, then clears it once IDB has it.
+const rescueKey = (name) => `${LS_PREFIX}rescue:${name}`;
+
+export function writeRescue(name, cues) {
+  try { localStorage.setItem(rescueKey(name), JSON.stringify(cues)); } catch { /* quota/private mode */ }
+}
+
+function clearRescue(name, onlyIfJson) {
+  try {
+    if (onlyIfJson != null && localStorage.getItem(rescueKey(name)) !== onlyIfJson) return;
+    localStorage.removeItem(rescueKey(name));
+  } catch { /* ignore */ }
+}
+
 export async function loadCues(name) {
   await ensureMigrated();
+  let rescued = null;
+  try { rescued = localStorage.getItem(rescueKey(name)); } catch { /* ignore */ }
+  if (rescued != null) {
+    try {
+      const cues = normalizeCues(JSON.parse(rescued));
+      await kvSet(`cues:${name}`, cues);
+      clearRescue(name);
+      return cues;
+    } catch {
+      clearRescue(name); // corrupt rescue copy: fall back to the stored list
+    }
+  }
   return normalizeCues(await kvGet(`cues:${name}`));
 }
 
 export async function saveCues(name, cues) {
   await kvSet(`cues:${name}`, cues);
+  // Drop the rescue copy only if it is exactly what we just stored, so an older
+  // save finishing late can't discard a newer rescue.
+  clearRescue(name, JSON.stringify(cues));
   await touchProject(name);
 }
 

@@ -8,10 +8,16 @@ import ImportSrt from './ImportSrt';
 import ExportSrt from './ExportSrt';
 import QualityPanel from './Errorchecking';
 import ShiftTiming from './ShiftTiming';
+import Tools from './Tools';
+import TypingPanel from './TypingPanel';
+import { typedCueRange, SPEEDS, stepSpeed, loopRangeFor } from './lib/typing';
 import BulkDelete from './BulkDelete';
 import CueRow from './CueRow';
 import FindReplace from './FindReplace';
 import ShortcutsHelp from './ShortcutsHelp';
+import WaveformTimeline from './WaveformTimeline';
+import SubtitleOverlay from './SubtitleOverlay';
+import { getPeaks } from './lib/waveform';
 import { useToast } from './Toast';
 
 import { makeCue } from './lib/cues';
@@ -24,7 +30,7 @@ import { cueStats } from './lib/stats';
 import { checkCues, levelsById, summarize, applyFixes, DEFAULT_SETTINGS, RULES } from './lib/qc';
 import { useHistory } from './lib/history';
 import {
-  projectExists, loadCues, saveCues,
+  projectExists, loadCues, saveCues, writeRescue,
   saveVideo, loadVideoRecord, restoreVideoFile, requestHandleFile,
   supportsFileHandles, requestPersistentStorage,
 } from './lib/storage';
@@ -81,6 +87,7 @@ function Workspace() {
   const [shiftOpen, setShiftOpen] = useState(false);
   const [shiftScope, setShiftScope] = useState('all');
   const [helpOpen, setHelpOpen] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
   const [follow, setFollow] = useState(() => readPref('follow', true));
   const [qcOpen, setQcOpen] = useState(false);
   const [qcSettings, setQcSettings] = useState(() => ({ ...DEFAULT_SETTINGS, ...readPref('qc', {}) }));
@@ -90,7 +97,23 @@ function Workspace() {
   const [dragKind, setDragKind] = useState(null); // null | 'files' while dragging files over the editor
 
   // ---------------- video ----------------
-  const [video, setVideo] = useState(null);               // { url, name, size }
+  const [video, setVideo] = useState(null);               // { url, name, size, file }
+  const [videoDurMs, setVideoDurMs] = useState(0);
+  const [wave, setWave] = useState({ state: 'novideo' }); // { state, text, progress, peaks, durationMs }
+  const [waveRetry, setWaveRetry] = useState(0);
+  const [waveOpen, setWaveOpen] = useState(() => readPref('wave', true));
+  const [subScale, setSubScale] = useState(() => Math.min(2, Math.max(0.6, Number(readPref('subScale', 1)) || 1)));
+  const [videoFullscreen, setVideoFullscreen] = useState(false);
+
+  // ---------------- playback aids + typing mode ----------------
+  const [rate, setRate] = useState(() => { const r = Number(readPref('rate', 1)); return SPEEDS.includes(r) ? r : 1; });
+  const [loop, setLoop] = useState(false);
+  const [rewindSec, setRewindSec] = useState(() => Number(readPref('rewind', 0)) || 0);
+  const [typing, setTyping] = useState(false);
+  const [typeText, setTypeText] = useState('');
+  const [segStartMs, setSegStartMs] = useState(0);
+  const [pauseOnType, setPauseOnType] = useState(() => readPref('pauseOnType', true) !== false);
+  const [typedCount, setTypedCount] = useState(0);
   const [pendingVideo, setPendingVideo] = useState(null); // stored record we couldn't auto-restore
   const [playerReady, setPlayerReady] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -100,16 +123,22 @@ function Workspace() {
   const [row, setRow] = useState({ startTime: '', endTime: '', text: '' });
 
   const playerRef = useRef(null);
+  const timelineRef = useRef(null);
+  const typeRef = useRef(null);
+  const typedEndRef = useRef(null);     // playhead when the user started typing the current cue
+  const autoPausedRef = useRef(false);  // we paused for typing → resume after Enter/Esc
+  const skipRewindRef = useRef(false);  // pauses we cause ourselves don't rewind
   const fileInputRef = useRef(null);
   const textRef = useRef(null);
   const rowEls = useRef({});
   const saveTimer = useRef(null);
+  const draftMergeRef = useRef(() => ({}));
   const skipNextSave = useRef(true);   // initial load isn't an edit — don't save or bump "Modified"
   const skipBlurSave = useRef(false);  // Esc in a field discards instead of saving
   const focusTextNext = useRef(false); // focus the text field once the new draft renders
   const caret = useRef({ id: null, index: null });
   const latest = useRef({});
-  latest.current = { projectName, cues, sel, currentMs, video, draft };
+  latest.current = { projectName, cues, sel, currentMs, video, draft, typing, typeText, isPlaying };
 
   const primaryIndex = useMemo(() => {
     if (sel.primary == null) return null;
@@ -149,7 +178,7 @@ function Workspace() {
         const restored = await restoreVideoFile(record);
         if (cancelled) return;
         if (restored?.file) {
-          setVideo({ url: URL.createObjectURL(restored.file), name: restored.file.name, size: restored.file.size });
+          setVideo({ url: URL.createObjectURL(restored.file), name: restored.file.name, size: restored.file.size, file: restored.file });
         } else {
           setPendingVideo(record);
         }
@@ -165,10 +194,11 @@ function Workspace() {
   // ---------------------------------------------------------------
   // Autosave (debounced). Saves an empty list too, so deleting every cue sticks.
   // ---------------------------------------------------------------
-  const flushSave = useCallback(async () => {
+  const flushSave = useCallback(async (override) => {
     clearTimeout(saveTimer.current);
     saveTimer.current = null;
-    const { projectName: name, cues: current } = latest.current;
+    const { projectName: name } = latest.current;
+    const current = override || latest.current.cues;
     if (!name) return;
     try {
       await saveCues(name, current);
@@ -189,7 +219,15 @@ function Workspace() {
   }, [cues, loaded, flushSave]);
 
   useEffect(() => {
-    const onHide = () => { if (saveTimer.current) flushSave(); };
+    // Leaving the page (reload, tab close, back to projects): save pending changes,
+    // including text still sitting in the cue editor that never got a blur.
+    const onHide = () => {
+      const r = draftMergeRef.current(latest.current.draft, latest.current.cues);
+      if (!r.changed && !saveTimer.current) return;
+      const list = r.changed ? r.list : latest.current.cues;
+      if (latest.current.projectName) writeRescue(latest.current.projectName, list);
+      flushSave(list);
+    };
     window.addEventListener('pagehide', onHide);
     return () => { window.removeEventListener('pagehide', onHide); onHide(); };
   }, [flushSave]);
@@ -242,11 +280,33 @@ function Workspace() {
 
     const raf = requestAnimationFrame(() => {
       Array.from(videoElement.textTracks).forEach(tt => {
-        if (tt.kind === 'subtitles') tt.mode = tt.label === 'Subtitles' ? 'showing' : 'disabled';
+        if (tt.kind === 'subtitles') tt.mode = tt.label === 'Subtitles' ? (videoFullscreen ? 'showing' : 'hidden') : 'disabled';
       });
     });
     return () => { cancelAnimationFrame(raf); URL.revokeObjectURL(objectURL); };
-  }, [cues, playerReady, video]);
+  }, [cues, playerReady, video, videoFullscreen]);
+
+  // The overlay lives outside the <video>, so it can't appear when the video element itself goes
+  // fullscreen; the browser's own subtitle track takes over there.
+  useEffect(() => {
+    const update = () => {
+      const el = document.fullscreenElement || document.webkitFullscreenElement;
+      const v = playerRef.current?.getInternalPlayer?.();
+      setVideoFullscreen(Boolean(el && v && (el === v || (el.contains && el.contains(v)) )) && !(el && el.classList?.contains('ws-video-wrap')));
+    };
+    document.addEventListener('fullscreenchange', update);
+    document.addEventListener('webkitfullscreenchange', update);
+    return () => {
+      document.removeEventListener('fullscreenchange', update);
+      document.removeEventListener('webkitfullscreenchange', update);
+    };
+  }, []);
+
+  const changeSubScale = (delta) => setSubScale(v => {
+    const next = Math.round(Math.min(2, Math.max(0.6, v + delta)) * 10) / 10;
+    writePref('subScale', next);
+    return next;
+  });
 
   useEffect(() => () => { if (video?.url) URL.revokeObjectURL(video.url); }, [video]);
 
@@ -265,7 +325,8 @@ function Workspace() {
     }
     setPlayerReady(false);
     setIsPlaying(false);
-    setVideo({ url: URL.createObjectURL(file), name: file.name, size: file.size });
+    setVideoDurMs(0);
+    setVideo({ url: URL.createObjectURL(file), name: file.name, size: file.size, file });
     setPendingVideo(null);
 
     const name = latest.current.projectName;
@@ -308,10 +369,16 @@ function Workspace() {
     openVideo();
   };
 
-  const seek = useCallback((ms) => {
+  /**
+   * Move the playhead. A seek the user makes (clicking the timeline, a cue, arrow keys)
+   * also moves where the next typed cue starts — unless they're mid-way through typing one.
+   * Seeks we make ourselves (loop, rewind) pass { user: false }.
+   */
+  const seek = useCallback((ms, { user = true } = {}) => {
     const t = Math.max(0, ms);
     if (playerRef.current && latest.current.video) playerRef.current.seekTo(t / 1000, 'seconds');
     setCurrentMs(t);
+    if (user && latest.current.typing && !latest.current.typeText.trim()) setSegStartMs(t);
   }, []);
 
   const handleProgress = (state) => setCurrentMs(secondsToMs(state.playedSeconds));
@@ -411,29 +478,36 @@ function Workspace() {
     requestAnimationFrame(() => scrollToCue(cue.id));
   };
 
-  const saveDraft = () => {
-    const { draft: d, cues: list } = latest.current;
-    if (!d) return;
+  // Merge the open draft into a cue list. Only fields the user actually changed are
+  // written, on top of the cue as it is now. Returns { list } or { error }.
+  const mergeDraft = (d, list) => {
+    if (!d) return { list };
     const current = list.find(c => c.id === d.base.id);
-    if (!current) return;
-
-    // Only fields the user actually changed are written, on top of the cue as it is now.
+    if (!current) return { list };
     const was = draftFromCue(d.base);
     const changed = {
       start: d.startTime !== was.startTime,
       end: d.endTime !== was.endTime,
       text: d.text !== was.text,
     };
-    if (!changed.start && !changed.end && !changed.text) return;
+    if (!changed.start && !changed.end && !changed.text) return { list };
     if ((changed.start && !isCompleteTime(d.startTime)) || (changed.end && !isCompleteTime(d.endTime))) {
-      toast.error('Times must be full timecodes, like 00:01:02,500. Change not saved.');
-      return;
+      return { error: 'Times must be full timecodes, like 00:01:02,500. Change not saved.' };
     }
     const startMs = changed.start ? parseTime(d.startTime) : current.startMs;
     const endMs = changed.end ? parseTime(d.endTime) : current.endMs;
     const text = changed.text ? d.text : current.text;
-    if (startMs === current.startMs && endMs === current.endMs && text === current.text) return;
-    commit(prev => prev.map(c => (c.id === current.id ? { ...c, startMs, endMs, text } : c)), 'Edit cue');
+    if (startMs === current.startMs && endMs === current.endMs && text === current.text) return { list };
+    return { list: list.map(c => (c.id === current.id ? { ...c, startMs, endMs, text } : c)), changed: true };
+  };
+
+  draftMergeRef.current = mergeDraft;
+
+  const saveDraft = () => {
+    const { draft: d, cues: list } = latest.current;
+    const r = mergeDraft(d, list);
+    if (r.error) { toast.error(r.error); return; }
+    if (r.changed) commit(() => r.list, 'Edit cue');
   };
 
   const handleFieldBlur = () => {
@@ -603,6 +677,195 @@ function Workspace() {
 
   // Find & replace callbacks
   const handleFindJump = useCallback((id) => selectOnly(id, { seekTo: true }), [selectOnly]);
+
+  // ---------------------------------------------------------------
+  // Waveform timeline
+  // ---------------------------------------------------------------
+  useEffect(() => {
+    const file = video?.file;
+    if (!file || !projectName) { setWave({ state: 'novideo' }); return undefined; }
+    let cancelled = false;
+    setWave({ state: 'loading', text: 'Reading audio…' });
+    getPeaks(projectName, file, {
+      onStage: (text) => { if (!cancelled) setWave(w => ({ ...w, state: 'loading', text, progress: null })); },
+      onProgress: (p) => { if (!cancelled) setWave(w => ({ ...w, progress: p })); },
+    }).then((r) => {
+      if (!cancelled) setWave({ state: 'ready', peaks: { data: r.peaks, perSec: r.perSec }, durationMs: r.durationMs, method: r.method });
+    }).catch((err) => {
+      console.error(err);
+      if (!cancelled) setWave({ state: 'error', text: err?.message && err.message.length < 90 ? err.message : '' });
+    });
+    return () => { cancelled = true; };
+  }, [video, projectName, waveRetry]);
+
+  const timelineDurationMs = useMemo(() => {
+    const lastEnd = cues.reduce((m, c) => Math.max(m, c.endMs), 0);
+    return Math.max(videoDurMs, wave.durationMs || 0, lastEnd + 5000, 30000);
+  }, [cues, videoDurMs, wave.durationMs]);
+
+  const getMediaMs = useCallback(() => {
+    const t = playerRef.current?.getCurrentTime?.();
+    return Number.isFinite(t) ? t * 1000 : null;
+  }, []);
+
+  // ---------------------------------------------------------------
+  // Playback aids: speed, loop, rewind on pause
+  // ---------------------------------------------------------------
+  const changeRate = useCallback((r) => { setRate(r); writePref('rate', r); }, []);
+
+  const mediaEl = () => {
+    const el = playerRef.current?.getInternalPlayer?.();
+    return el && typeof el.play === 'function' ? el : null;
+  };
+
+  const handlePause = () => {
+    // A 'pause' event can arrive late — after typing mode has already resumed playback.
+    // If the video is actually playing again, it's stale: ignore it.
+    const el = mediaEl();
+    if (el && !el.paused) return;
+    setIsPlaying(false);
+    if (skipRewindRef.current) { skipRewindRef.current = false; return; }
+    if (rewindSec > 0) {
+      const t = getMediaMs();
+      if (t != null) seek(t - rewindSec * 1000, { user: false });
+    }
+  };
+
+  /** Pause without the rewind-on-pause behaviour (used by typing mode). */
+  const pauseQuietly = () => { skipRewindRef.current = true; setIsPlaying(false); mediaEl()?.pause(); };
+
+  /** Play now. Calls the element directly so a quick pause → play can't get lost in the player library. */
+  const playNow = () => {
+    setIsPlaying(true);
+    const p = mediaEl()?.play();
+    if (p && p.catch) p.catch(() => {});
+  };
+
+  const loopRange = useMemo(() => (loop ? loopRangeFor(cues, sel.ids, sel.primary) : null), [loop, cues, sel.ids, sel.primary]);
+
+  const toggleLoop = () => {
+    if (loop) { setLoop(false); return; }
+    if (!loopRangeFor(latest.current.cues, latest.current.sel.ids, latest.current.sel.primary)) {
+      toast.info('Select a cue (or several) to loop.');
+      return;
+    }
+    setLoop(true);
+  };
+
+  // Jump into the loop when it starts or the looped cue changes.
+  useEffect(() => {
+    if (!loopRange || !video) return;
+    const t = latest.current.currentMs;
+    if (t < loopRange.startMs || t >= loopRange.endMs) seek(loopRange.startMs, { user: false });
+  }, [loopRange, video, seek]);
+
+  // While playing, wrap back to the start of the loop.
+  useEffect(() => {
+    if (!loopRange || !isPlaying) return undefined;
+    let raf = 0;
+    const tick = () => {
+      const t = getMediaMs();
+      if (t != null && (t >= loopRange.endMs || t < loopRange.startMs - 250)) seek(loopRange.startMs, { user: false });
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [loopRange, isPlaying, getMediaMs, seek]);
+
+  // ---------------------------------------------------------------
+  // Typing mode
+  // ---------------------------------------------------------------
+  const enterTyping = () => {
+    setTyping(true);
+    setTypeText('');
+    setTypedCount(0);
+    typedEndRef.current = null;
+    setSegStartMs(latest.current.currentMs);
+    setTimeout(() => typeRef.current?.focus(), 30);
+  };
+  const exitTyping = () => {
+    setTyping(false);
+    typedEndRef.current = null;
+    autoPausedRef.current = false;
+  };
+  const toggleTyping = () => (latest.current.typing ? exitTyping() : enterTyping());
+
+  const resumeIfAutoPaused = () => {
+    if (autoPausedRef.current) { autoPausedRef.current = false; playNow(); }
+  };
+
+  const handleTypeChange = (value) => {
+    // The first character marks the end of the phrase being typed.
+    if (!typeText.trim() && value.trim()) {
+      const t = getMediaMs();
+      typedEndRef.current = t != null ? t : latest.current.currentMs;
+      if (pauseOnType && latest.current.isPlaying) { autoPausedRef.current = true; pauseQuietly(); }
+    }
+    if (!value.trim()) typedEndRef.current = null;
+    setTypeText(value);
+  };
+
+  const commitTyped = () => {
+    const text = typeText.trim();
+    if (!text) return;
+    const end = typedEndRef.current ?? getMediaMs() ?? latest.current.currentMs;
+    const range = typedCueRange(segStartMs, end, text);
+    const cue = makeCue({ ...range, text });
+    commit(prev => insertByStart(prev, cue), 'Typed cue');
+    setSegStartMs(range.endMs);
+    setTypeText('');
+    setTypedCount(n => n + 1);
+    typedEndRef.current = null;
+    requestAnimationFrame(() => scrollToCue(cue.id));
+    resumeIfAutoPaused();
+  };
+
+  const handleTypeKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) { e.preventDefault(); commitTyped(); return; }
+    if (e.key === 'Escape') {
+      e.preventDefault(); e.stopPropagation();
+      setTypeText(''); typedEndRef.current = null;
+      resumeIfAutoPaused();
+      return;
+    }
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      if (e.shiftKey) {
+        const t = getMediaMs() ?? latest.current.currentMs;
+        seek(t - 2000, { user: false });
+      } else {
+        autoPausedRef.current = false;
+        if (latest.current.isPlaying) pauseQuietly(); else playNow();
+      }
+    }
+  };
+
+  const setPauseOnTypePref = (v) => { setPauseOnType(v); writePref('pauseOnType', v); };
+  const changeRewind = (v) => { setRewindSec(v); writePref('rewind', v); };
+
+  const handleTimelineSelect = useCallback((id, mods = {}) => {
+    if (mods.ctrl) toggleInSelection(id);
+    else if (mods.shift) selectRangeTo(id);
+    else selectOnly(id);
+  }, [toggleInSelection, selectRangeTo, selectOnly]);
+
+  const handleTimelineEdit = useCallback((next, label, key) => commit(next, label, key), [commit]);
+
+  const handleTimelineCreate = useCallback((startMs, endMs) => {
+    const cue = makeCue({ startMs, endMs, text: '' });
+    commit(prev => insertByStart(prev, cue), 'New cue');
+    focusTextNext.current = true;
+    setSel({ ids: new Set([cue.id]), primary: cue.id, anchor: cue.id });
+    requestAnimationFrame(() => scrollToCue(cue.id));
+  }, [commit, scrollToCue]);
+
+  const handleTimelineActivate = useCallback((id) => {
+    selectOnly(id);
+    focusTextNext.current = true;
+    setTimeout(() => textRef.current?.focus(), 30);
+  }, [selectOnly]);
+
+  const toggleWave = useCallback(() => setWaveOpen(o => { writePref('wave', !o); return !o; }), []);
   const handleReplaceOne = useCallback((id, re, rep, regex) => {
     commit(prev => replaceInCues(prev, re, rep, { regex, ids: new Set([id]) }).cues, 'Replace');
   }, [commit]);
@@ -633,6 +896,7 @@ function Workspace() {
     if (modalOpen) return;
     if (mod && key === 'f') { e.preventDefault(); openFind(); return; }
     if (mod && key === 'o') { e.preventDefault(); openImport(); return; }
+    if (mod && key === 'k') { e.preventDefault(); if (latest.current.video) toggleTyping(); else toast.info('Open a video first to use typing mode.'); return; }
     if (mod && e.shiftKey && key === 'e') { e.preventDefault(); if (latest.current.cues.length) setExportOpen(true); return; }
 
     if (isTyping) return; // fields keep native behaviour (including their own Ctrl+Z)
@@ -681,6 +945,9 @@ function Workspace() {
     }
 
     if (e.key === '?') { e.preventDefault(); setHelpOpen(true); return; }
+    if (e.key === '<' || e.key === '>') { e.preventDefault(); changeRate(stepSpeed(rate, e.key === '>' ? 1 : -1)); return; }
+    if (e.key === '=' || e.key === '+') { e.preventDefault(); timelineRef.current?.zoomIn(); return; }
+    if (e.key === '-' || e.key === '_') { e.preventDefault(); timelineRef.current?.zoomOut(); return; }
     if (e.shiftKey) return;
     if (key === 'm') mergeSelection();
     else if (key === 's') splitPrimary();
@@ -688,6 +955,10 @@ function Workspace() {
     else if (key === 'o') setEdgeToPlayhead('end');
     else if (key === 'n') { e.preventDefault(); newCueAtPlayhead(); }
     else if (key === 'q') { e.preventDefault(); setQcOpen(o => !o); }
+    else if (key === 'w') { e.preventDefault(); toggleWave(); }
+    else if (key === 't') { e.preventDefault(); if (latest.current.cues.length) setToolsOpen(true); }
+    else if (key === 'l') { e.preventDefault(); toggleLoop(); }
+
   };
 
   useEffect(() => {
@@ -753,6 +1024,8 @@ function Workspace() {
             )}
           </button>
           <button className="ws-btn" onClick={() => openShift(multi ? 'selected' : 'all')} disabled={cues.length === 0}>Shift timing</button>
+          <button className="ws-btn" onClick={() => setToolsOpen(true)} disabled={cues.length === 0}
+                  title="Sync and text clean-up tools (T)">Tools</button>
           <BulkDelete
             cues={cues}
             setCues={(next) => commit(next, 'Bulk delete')}
@@ -773,8 +1046,17 @@ function Workspace() {
         {/* ---------------- VIDEO PANE ---------------- */}
         <section className="ws-pane video">
           <div className="ws-pane-header">
-            <span title={video?.name}>{video ? video.name : 'Preview'}</span>
-            <span>{plural(cues.length, 'cue')}</span>
+            <span className="ws-pane-title" title={video?.name}>{video ? video.name : 'Preview'}</span>
+            <span className="ws-pane-header-right">
+              {video && (
+                <span className="ws-sub-size" role="group" aria-label="Subtitle size on the preview">
+                  <button className="ws-icon-btn" onClick={() => changeSubScale(-0.1)} disabled={subScale <= 0.6} title="Smaller subtitles on the preview" aria-label="Smaller subtitles">A−</button>
+                  <span title="Subtitle size on the preview">{Math.round(subScale * 100)}%</span>
+                  <button className="ws-icon-btn" onClick={() => changeSubScale(0.1)} disabled={subScale >= 2} title="Larger subtitles on the preview" aria-label="Larger subtitles">A+</button>
+                </span>
+              )}
+              <span>{plural(cues.length, 'cue')}</span>
+            </span>
           </div>
 
           <div className="ws-video-wrap">
@@ -785,18 +1067,31 @@ function Workspace() {
                 className="react-player"
                 url={video.url}
                 width="100%"
-                height="240px"
+                height="100%"
                 controls
                 progressInterval={100}
                 onReady={() => setPlayerReady(true)}
+                onDuration={(d) => setVideoDurMs(Math.round((d || 0) * 1000))}
                 onProgress={handleProgress}
                 onSeek={(sec) => setCurrentMs(secondsToMs(sec))}
                 onError={() => toast.error("This browser can't play that video. Try an MP4 (H.264/AAC) file.")}
                 playing={isPlaying}
+                playbackRate={rate}
                 onPlay={() => setIsPlaying(true)}
-                onPause={() => setIsPlaying(false)}
+                onPause={handlePause}
               />
-            ) : pendingVideo ? (
+            ) : null}
+            {video && (
+              <SubtitleOverlay
+                cues={cues}
+                currentMs={currentMs}
+                isPlaying={isPlaying}
+                getMediaMs={getMediaMs}
+                scale={subScale}
+                hidden={videoFullscreen}
+              />
+            )}
+            {!video && (pendingVideo ? (
               <div className="ws-empty-video">
                 <div>Video not loaded</div>
                 <div className="ws-empty-video-name">{pendingVideo.name}</div>
@@ -809,11 +1104,11 @@ function Workspace() {
                 <div>No video loaded</div>
                 <button className="ws-btn primary" onClick={openVideo}>Open a video</button>
               </div>
-            )}
+            ))}
           </div>
 
           <div className="ws-video-meta">
-            <span>Position</span>
+            <span className="ws-meta-label">Position</span>
             <span className="tc">{currentTime}</span>
             <span className="ws-spacer" />
             <button className="ws-btn" onClick={newCueAtPlayhead} title="New cue at playhead (N)">+ Cue here <span className="ws-kbd">N</span></button>
@@ -822,6 +1117,42 @@ function Workspace() {
             </button>
           </div>
 
+          <div className="ws-playbar">
+            <label className="ws-pb-item" title="Playback speed (< and >)">
+              <span>Speed</span>
+              <select className="ws-pb-select" value={rate} onChange={(e) => changeRate(Number(e.target.value))} aria-label="Playback speed">
+                {SPEEDS.map(r => <option key={r} value={r}>{r}×</option>)}
+              </select>
+            </label>
+            <button className={`ws-chip${loop ? ' on' : ''}`} onClick={toggleLoop} disabled={!video}
+                    title="Loop the selected cue — or the span of a multi-selection (L)" aria-pressed={loop}>⟲ Loop</button>
+            <label className="ws-pb-item" title="After you pause, jump back so you can re-listen">
+              <span>Rewind on pause</span>
+              <select className="ws-pb-select" value={rewindSec} onChange={(e) => changeRewind(Number(e.target.value))} aria-label="Rewind on pause">
+                {[0, 1, 2, 3, 5].map(v => <option key={v} value={v}>{v ? `${v}s` : 'Off'}</option>)}
+              </select>
+            </label>
+            <span className="ws-spacer" />
+            <button className={`ws-btn ws-typing-btn${typing ? ' primary' : ''}`} onClick={toggleTyping} disabled={!video}
+                    title="Type while the video plays; Enter adds a timed cue (Ctrl+K)" aria-pressed={typing}>⌨ Typing mode</button>
+          </div>
+
+          {typing ? (
+            <TypingPanel
+              ref={typeRef}
+              text={typeText}
+              onChange={handleTypeChange}
+              onKeyDown={handleTypeKeyDown}
+              segStartMs={segStartMs}
+              onStartHere={() => setSegStartMs(getMediaMs() ?? currentMs)}
+              pauseOnType={pauseOnType}
+              onPauseOnType={setPauseOnTypePref}
+              onExit={exitTyping}
+              isPlaying={isPlaying}
+              videoLoaded={Boolean(video)}
+              count={typedCount}
+            />
+          ) : (
           <div className="ws-quick-add">
             <div className="ws-field">
               <label htmlFor="startTime">Start</label>
@@ -844,6 +1175,7 @@ function Workspace() {
             <button className="ws-btn" onClick={() => setRow(r => ({ ...r, endTime: currentTime }))}>Set end = {currentTime.slice(0, 8)}</button>
             <button className="ws-btn primary" onClick={addCue}>Add cue</button>
           </div>
+          )}
         </section>
 
         {/* ---------------- TIMELINE PANE ---------------- */}
@@ -919,6 +1251,7 @@ function Workspace() {
             <span><b>N</b> new cue</span>
             <span><b>Ctrl+Z</b> undo</span>
             <span><b>Q</b> check</span>
+            <span><b>W</b> waveform</span>
             <button className="ws-linklike" onClick={() => setHelpOpen(true)}><b>?</b> all shortcuts</button>
           </div>
         </section>
@@ -1019,6 +1352,9 @@ function Workspace() {
                     <button className="ws-btn" onClick={() => nudge(-NUDGE_MS)} title="[">−100ms</button>
                     <button className="ws-btn" onClick={() => nudge(NUDGE_MS)} title="]">+100ms</button>
                     <button className="ws-btn" onClick={() => seek(primaryCue.startMs)} disabled={!video} title="Jump the video to this cue">▶ Go to cue</button>
+                    {primaryIndex > 0 && (
+                      <button className="ws-btn" onClick={() => openShift('from')} title="Shift this cue and every cue after it">Shift from here…</button>
+                    )}
                   </div>
                 </div>
                 <div className="ws-props-meta">Cue #{primaryIndex + 1} of {cues.length}</div>
@@ -1033,6 +1369,29 @@ function Workspace() {
         </section>
       </div>
 
+      <WaveformTimeline
+        ref={timelineRef}
+        cues={cues}
+        selIds={sel.ids}
+        primaryId={sel.primary}
+        issueLevels={issueLevels}
+        currentMs={currentMs}
+        getMediaMs={video ? getMediaMs : null}
+        durationMs={timelineDurationMs}
+        isPlaying={isPlaying}
+        follow={follow}
+        peaks={wave.state === 'ready' ? wave.peaks : null}
+        status={wave}
+        collapsed={!waveOpen}
+        onToggle={toggleWave}
+        onRetry={() => setWaveRetry(n => n + 1)}
+        onSeek={seek}
+        onSelect={handleTimelineSelect}
+        onEdit={handleTimelineEdit}
+        onCreate={handleTimelineCreate}
+        onActivate={handleTimelineActivate}
+      />
+
       <DeleteEntry
         showDelete={delIds != null}
         count={delIds?.length || 0}
@@ -1044,10 +1403,26 @@ function Workspace() {
         onClose={() => setShiftOpen(false)}
         cues={cues}
         selectedIds={sel.ids}
+        fromIndex={!multi ? primaryIndex : null}
         defaultScope={shiftScope}
         onApply={(next, { count, clamped }) => {
           commit(next, `Shift ${plural(count, 'cue')}`);
           toast.success(`Shifted ${plural(count, 'cue')}${clamped ? ` — ${clamped} stopped at 00:00:00,000` : ''}`,
+            { action: { label: 'Undo', onClick: undoFromToast } });
+        }}
+      />
+      <Tools
+        show={toolsOpen}
+        onClose={() => setToolsOpen(false)}
+        cues={cues}
+        selectedIds={sel.ids}
+        primaryIndex={primaryIndex}
+        currentMs={currentMs}
+        videoLoaded={Boolean(video)}
+        limits={qcSettings}
+        onApply={(next, label, { changed, removed }) => {
+          commit(next, label);
+          toast.success(`${label}: ${plural(changed, 'cue')} changed${removed ? `, ${plural(removed, 'cue')} removed` : ''}`,
             { action: { label: 'Undo', onClick: undoFromToast } });
         }}
       />

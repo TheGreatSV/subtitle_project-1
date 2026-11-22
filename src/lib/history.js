@@ -17,7 +17,10 @@ function reducer(state, action) {
     case 'set': {
       const next = typeof action.next === 'function' ? action.next(state.present) : action.next;
       if (next === state.present) return state;
-      const canCoalesce = action.key && state.lastKey === action.key && action.at - state.lastAt < COALESCE_MS && state.past.length > 0;
+      // Same key within a second → one undo step (repeated nudges). Keys starting with
+      // "drag:" belong to one pointer drag and always merge, however slow the drag is.
+      const sameKey = action.key && state.lastKey === action.key && state.past.length > 0;
+      const canCoalesce = sameKey && (action.key.startsWith('drag:') || action.at - state.lastAt < COALESCE_MS);
       return {
         past: canCoalesce ? state.past : [...state.past, { value: state.present, label: action.label }].slice(-LIMIT),
         present: next,
